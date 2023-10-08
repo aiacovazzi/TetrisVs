@@ -9,17 +9,18 @@ let interval = setInterval(MenuLoop, 1000 / 60);
 // Double the size of elements to fit the screen
 ctx.scale(2, 2);
 
-function MenuLoop(){
-    if(option == null){
-    option = drawMenuCanvas(ctx, canvas);
-    }else{        
+function MenuLoop() {
+
+    if (option == null) {
+        option = drawMenuCanvas(ctx, canvas);
+    } else {
         clearInterval(interval);
         gB = new GameBoard(option);
         interval = setInterval(GameLoop, 1000 / 60);
     }
 }
 
-function GameLoop(){    
-        gB.gameLoop();
-        drawGameCanvas(ctx, canvas, gB);
+function GameLoop() {
+    gB.gameLoop();
+    drawGameCanvas(ctx, canvas, gB);
 }

@@ -1,47 +1,79 @@
 :- use_module(library(lists)).
-/*To do:
--finire di implementare i tetramini
--l'euristica di selezione della mossa è da migliorare.
--il planner usato come step successivo trovata la mossa migliore, se fallisce bisogna provare con la seconda migliore e così via...
-    %non posso dare sempre per scontato che la mossa migliore trovata sdarà raggiungbile, ci saranno rari casi in cui non lo è, es:
+:- use_module(planner).
 
-    [7][x][x][x][x][x][x][x][o][o][o]
-    [8][x][x][x][x][x][x][x][o][?][o]
-    [9][x][x][x][x][x][x][?][?][?][o]
-    [-][0][1][2][3][4][5][6][7][8][9]
-    The L represent by ? cannot  fit there even if it is the best place.
+/*To do (8/10):
 -prima integrazione col gioco Js (TEST)
+
+-l'euristica di selezione della mossa è da migliorare.
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+To do (15/10):
 -modifica dell'algoritmo di ricerca della mossa per gestire intelligentemente il secondo pezzo 
-    -%attualmente è strettamente collegata al primo, inoltre è specifica per tetris)
--evoluzione del'algoritmo allo step precedente per farlo diventare min/max
+    -%attualmente è strettamente collegata al primo, inoltre è specifica per tetris
+
+-evoluzione dell'algoritmo allo step precedente per farlo diventare min/max
+
+-implementare il logger che spieghi le mosse
+    prende la catena di valutazione delle mosse e ne siega la ratio
 */
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Defining the game board properties and the occupied cells%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 gameBoardW(10).
 gameBoardH(10).
+:-dynamic(occCell/2).
 
-:-dynamic occCell/2.
-
-%vertical S piece at the bottom right of the board
+/*
+[-1,-1,-1,-1, 0, 0,-1,-1,-1,-1],
+[-1,-1,-1,-1, 0, 0,-1,-1,-1,-1],
+[-1,-1,-1, 0, 0, 0,-1,-1,-1,-1],
+[-1,-1,-1,-1, 0,-1,-1,-1,-1,-1],
+*/
+occCell(9,0).
+occCell(9,1).
+occCell(9,2).
+occCell(9,3).
+occCell(9,5).
+occCell(9,6).
+occCell(9,7).
+occCell(9,8).
 occCell(9,9).
-occCell(8,9).
-occCell(8,8).
-occCell(8,7).
+
+occCell(8,0).
+occCell(8,1).
+occCell(8,2).
 occCell(8,6).
-occCell(8,5).
-occCell(8,4).
+occCell(8,7).
+occCell(8,8).
+occCell(8,9).
+
+occCell(7,0).
+occCell(7,1).
+occCell(7,2).
+occCell(7,3).
+occCell(7,6).
+occCell(7,7).
 occCell(7,8).
+occCell(7,9).
 
-%//////////////////////////////////////////////////////////
+occCell(6,0).
+occCell(6,1).
+occCell(6,2).
+occCell(6,3).
+occCell(6,6).
+occCell(6,7).
+occCell(6,8).
+occCell(6,9).
 
+
+%the starting position of the playing tetramino
+%tetramino(T,R,C).
+%start((T,1,5)).
 
 
 %%%%%%%%%%%%%%%%%
 %Auxiliary rules%
 %%%%%%%%%%%%%%%%%
-%
 
 %solve equations in the form
 % X = Y + Z
@@ -78,7 +110,6 @@ gen(Cur, Top, Next):-
   Cur1 is Cur+1,
   gen(Cur1, Top, Next).
 %
-
 
 %Check if a cell is avalaible and if the indexes are not out of bound.
 freeCell(R,C) :- 
@@ -147,7 +178,7 @@ fitPiece(o,R1,C1,R2,C2,R3,C3,R4,C4) :-
     freeCell(R2,C2),
     freeCell(R3,C3),
     freeCell(R4,C4).
-%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %I Tetramino
 %[ ][x][ ][ ]
@@ -168,6 +199,10 @@ fitPiece(i1,R1,C1,R2,C2,R3,C3,R4,C4) :-
 %[x]
 %[ ]
 %[ ]
+%[R2;C2]
+%[R1;C1]
+%[R3;C3]
+%[R4;C4]
 fitPiece(i2,R1,C1,R2,C2,R3,C3,R4,C4) :- 
     C1 = C2,
 	C2 = C3,
@@ -179,7 +214,308 @@ fitPiece(i2,R1,C1,R2,C2,R3,C3,R4,C4) :-
     freeCell(R2,C2),
     freeCell(R3,C3),	
     freeCell(R4,C4).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%S Tetramino
+%   [ ][ ]
+%[ ][x]
+%       [R3;C3][R4;C4]
+%[R2;C2][R1;C1]
+
+fitPiece(s1,R1,C1,R2,C2,R3,C3,R4,C4) :- 
+    C1 = C3,
+    R1 = R2,
+    R4 = R3,
+	eq(C2,C1,-1),
+    eq(R3,R1,-1),
+    eq(C4,C3,+1),
+    freeCell(R1,C1),    
+    freeCell(R2,C2),
+    freeCell(R3,C3),	
+    freeCell(R4,C4).
+
+
+%[ ]
+%[ ][x]
+%   [ ]
+%[R4;C4]
+%[R3;C3][R1;C1]
+%       [R2;C2]
+
+fitPiece(s2,R1,C1,R2,C2,R3,C3,R4,C4) :- 
+    C1 = C2,
+    R1 = R3,
+    C3 = C4,
+	eq(R2,R1,+1),
+    eq(R4,R3,-1),
+    eq(C3,C1,-1),
+    freeCell(R1,C1),    
+    freeCell(R2,C2),
+    freeCell(R3,C3),	
+    freeCell(R4,C4).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%Z Tetramino
+%S Tetramino
+%[ ][ ]
+%   [x][ ]
+%[R4;C4][R3;C3]
+%       [R1;C1][R2;C2]
+fitPiece(z1,R1,C1,R2,C2,R3,C3,R4,C4) :- 
+    C1 = C3,
+    R1 = R2,
+    R4 = R3,
+    eq(C2,C1,+1),
+    eq(R3,R1,-1),
+    eq(C4,C3,-1),
+    freeCell(R1,C1),    
+    freeCell(R2,C2),
+    freeCell(R3,C3),	
+    freeCell(R4,C4).
+
+%   [ ]
+%[ ][x]
+%[ ]
+%       [R4;C4]
+%[R3;C3][R1;C1]
+%[R2;C2]
+
+fitPiece(z2,R1,C1,R2,C2,R3,C3,R4,C4) :- 
+    C1 = C4,
+    R1 = R3,
+    C3 = C2,
+	eq(R2,R1,+1),
+    eq(R4,R1,-1),
+    eq(C3,C1,-1),
+    freeCell(R1,C1),    
+    freeCell(R2,C2),
+    freeCell(R3,C3),	
+    freeCell(R4,C4).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%T Tetramino
+%   [ ]
+%[ ][x][ ]
+%       [R3;C3]
+%[R2;C2][R1;C1][R4;C4]
+
+fitPiece(t1,R1,C1,R2,C2,R3,C3,R4,C4) :- 
+    C1 = C3,
+    R1 = R2,
+    R1 = R4,
+	eq(C2,C1,-1),
+    eq(R3,R1,-1),
+    eq(C4,C1,+1),
+    freeCell(R1,C1),    
+    freeCell(R2,C2),
+    freeCell(R3,C3),	
+    freeCell(R4,C4).
+
+%   [ ]
+%   [x][ ]
+%   [ ]
+%   [R3;C3]
+%   [R1;C1][R4;C4]
+%   [R2;C2]
+fitPiece(t2,R1,C1,R2,C2,R3,C3,R4,C4) :- 
+    C1 = C3,
+    R1 = R4,
+    C1 = C2,
+	eq(R2,R1,+1),
+    eq(R3,R1,-1),
+    eq(C4,C1,+1),
+    freeCell(R1,C1),    
+    freeCell(R2,C2),
+    freeCell(R3,C3),	
+    freeCell(R4,C4).
+
+%   
+%[ ][x][ ]
+%   [ ]
+%   
+%[R3;C3][R1;C1][R4;C4]
+%       [R2;C2]
+fitPiece(t3,R1,C1,R2,C2,R3,C3,R4,C4) :- 
+    R1 = R3,
+    R1 = R4,
+    C1 = C2,
+	eq(R2,R1,+1),
+    eq(C3,C1,-1),
+    eq(C4,C1,+1),
+    freeCell(R1,C1),    
+    freeCell(R2,C2),
+    freeCell(R3,C3),	
+    freeCell(R4,C4).
+
+%   [ ]
+%[ ][x]
+%   [ ]
+%       [R4;C4]
+%[R3;C3][R1;C1]
+%       [R2;C2]
+fitPiece(t4,R1,C1,R2,C2,R3,C3,R4,C4) :- 
+    R1 = R3,
+    C1 = C2,
+    C1 = C4,
+	eq(R2,R1,+1),
+    eq(C3,C1,-1),
+    eq(R4,R1,-1),
+    freeCell(R1,C1),    
+    freeCell(R2,C2),
+    freeCell(R3,C3),	
+    freeCell(R4,C4).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%J Tetramino
+%[ ]
+%[ ][x][ ]
+%[R3;C3]
+%[R2;C2][R1;C1][R4;C4]
+
+fitPiece(j1,R1,C1,R2,C2,R3,C3,R4,C4) :- 
+    R1 = R2,
+    R1 = R4,
+    C2 = C3,
+	eq(C2,C1,-1),
+    eq(R3,R1,-1),
+    eq(C4,C1,+1),
+    freeCell(R1,C1),    
+    freeCell(R2,C2),
+    freeCell(R3,C3),	
+    freeCell(R4,C4).
+
+%   [ ][ ]
+%   [x]
+%   [ ]
+%   [R2;C2][R3;C3]
+%   [R1;C1]
+%   [R4;C4]
+
+fitPiece(j2,R1,C1,R2,C2,R3,C3,R4,C4) :- 
+    C1 = C2,
+    C1 = C4,
+    R3 = R2,
+	eq(R2,R1,-1),
+    eq(R4,R1,+1),
+    eq(C3,C2,+1),
+    freeCell(R1,C1),    
+    freeCell(R2,C2),
+    freeCell(R3,C3),	
+    freeCell(R4,C4).
+
 %
+%[ ][x][ ]
+%      [ ]
+%[R2;C2][R1;C1][R3;C3]
+%              [R4;C4]
+
+fitPiece(j3,R1,C1,R2,C2,R3,C3,R4,C4) :- 
+    R2 = R1,
+    R3 = R1,
+    C3 = C4,
+	eq(C2,C1,-1),
+    eq(C3,C1,+1),
+    eq(R4,R3,+1),
+    freeCell(R1,C1),    
+    freeCell(R2,C2),
+    freeCell(R3,C3),	
+    freeCell(R4,C4).
+
+%   [ ]
+%   [x]
+%[ ][ ]
+%       [R2;C2]
+%       [R1;C1]
+%[R4;C4][R3;C3]       
+
+fitPiece(j4,R1,C1,R2,C2,R3,C3,R4,C4) :- 
+    C2 = C1,
+    C3 = C1,
+    R4 = R3,
+	eq(R2,R1,-1),
+    eq(R3,R1,+1),
+    eq(C4,C3,-1),
+    freeCell(R1,C1),    
+    freeCell(R2,C2),
+    freeCell(R3,C3),	
+    freeCell(R4,C4).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%L Tetramino
+%      [ ]
+%[ ][x][ ]
+%              [R3;C3]
+%[R2;C2][R1;C1][R4;C4]
+
+fitPiece(l1,R1,C1,R2,C2,R3,C3,R4,C4) :- 
+    R1 = R2,
+    R1 = R4,
+    C4 = C3,
+	eq(C2,C1,-1),
+    eq(R3,R1,-1),
+    eq(C4,C1,+1),
+    freeCell(R1,C1),    
+    freeCell(R2,C2),
+    freeCell(R3,C3),	
+    freeCell(R4,C4).
+
+%   [ ]
+%   [x]
+%   [ ][ ]
+%   [R2;C2]
+%   [R1;C1]
+%   [R3;C3][R4;C4]       
+
+fitPiece(l2,R1,C1,R2,C2,R3,C3,R4,C4) :- 
+    C2 = C1,
+    C3 = C1,
+    R4 = R3,
+	eq(R2,R1,-1),
+    eq(R3,R1,+1),
+    eq(C4,C3,+1),
+    freeCell(R1,C1),    
+    freeCell(R2,C2),
+    freeCell(R3,C3),	
+    freeCell(R4,C4).
+
+%
+%[ ][x][ ]
+%[ ]              
+%[R2;C2][R1;C1][R4;C4]
+%[R3;C3]
+
+fitPiece(l3,R1,C1,R2,C2,R3,C3,R4,C4) :- 
+    R1 = R2,
+    R1 = R4,
+    C2 = C3,
+	eq(C2,C1,-1),
+    eq(R3,R2,+1),
+    eq(C4,C1,+1),
+    freeCell(R1,C1),    
+    freeCell(R2,C2),
+    freeCell(R3,C3),	
+    freeCell(R4,C4).
+
+%[ ][ ]
+%   [x]
+%   [ ]
+%[R4;C4][R2;C2]
+%       [R1;C1]
+%       [R3;C3]       
+
+fitPiece(l4,R1,C1,R2,C2,R3,C3,R4,C4) :- 
+    C2 = C1,
+    C3 = C1,
+    R4 = R2,
+	eq(R2,R1,-1),
+    eq(R3,R1,+1),
+    eq(C4,C2,-1),
+    freeCell(R1,C1),    
+    freeCell(R2,C2),
+    freeCell(R3,C3),	
+    freeCell(R4,C4).
+
+
 
 %Put the piece in the given reference point and then assert all the occupied cells.
 placePiece(T,R1,C1,L) :-
@@ -190,7 +526,7 @@ placePiece(T,R1,C1,L) :-
 assertPiece([]).
 
 assertPiece([H|T]):-
-    assert(H),
+    asserta(H),
     assertPiece(T).
 	
 retractPiece([]).
@@ -220,7 +556,6 @@ tetraminoGoal(T,R,C) :-
     R1 is R + 1,
     \+fitPiece(T,R1,C,_,_,_,_,_,_).
 %///////////////////
-
 
 %%%%%%%%%%%%%%%%%%%%%
 %GameBoard Evaluator%
@@ -417,7 +752,6 @@ clearedRow(R,Ct,C) :-
     clearedRow(R1,Ct,C),
     !.
     
-
 %Compute the whole GameBoard score
 gameBoardScore(S) :-
     holesInGameBoard(N),
@@ -425,8 +759,16 @@ gameBoardScore(S) :-
     nonConsecutiveEmptyCol(EC),
     S is N + AvgEnt + EC.  
 
-%Compute the evalution for each available move and put them in an array
+scoreMoves([],M,M).
 
+scoreMoves([(T,R,C)|Tail],M,ScoreList) :-
+    placePiece(T,R,C,L),
+    gameBoardScore(S),
+    retractPiece(L),
+    append(M,[[S,(T,R,C)]],M1),
+    scoreMoves(Tail,M1,ScoreList).  
+
+%Compute the evalution for each available move and put them in an array
 findMoves(T,ScoreList) :-
     findMoves(T,[],ScoreListUnsort),
     sort(1, @=<, ScoreListUnsort, ScoreList).
@@ -434,32 +776,11 @@ findMoves(T,ScoreList) :-
 findMoves(T,M,ScoreList) :-
 	findPossibleGoals(T,L),
     scoreMoves(L,M,ScoreList).
-
-scoreMoves([],M,M).
-
-scoreMoves([(T,R,C)|Tail],M,ScoreList) :-
-    placePiece(T,R,C,L),
-    gameBoardScore(S),
-    retractPiece(L),
-    append(M,[(S,T,R,C)],M1),
-    scoreMoves(Tail,M1,ScoreList).  
 %////////////////////////////////////////    
-
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Planner%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-%
-
-%the starting position of the playing tetramino
-%tetramino(T1,R1,C1).
-start((i1,0,6)).
-
-%the position goal
-%goal(T2,R2,C2).
-goal((i1,9,6)).
 
 %Define actions
 %setof(A, action(A), Action)
@@ -469,7 +790,7 @@ action(right).
 action(left).
 action(down).
 
-%All the action replicate the input when can't be used.
+%listing the actual transformation involved by the moves
 rotate((T1,R1,C1),(T2,R1,C1)) :-
     rotation(_,T1,T2),
     fitPiece(T2,R1,C1,_,_,_,_,_,_).
@@ -487,20 +808,13 @@ down((T1,R1,C1),(T1,R2,C1)) :-
     fitPiece(T1,R2,C1,_,_,_,_,_,_).
 %
 
-
-priority(left,10).
-priority(right,10).
-priority(down,1).
-priority(rotate,1). %rotate has the minimum priority, it's executed as last move. 
-
-diff(T1,T2,Diff) :-
-    T1 == T2,
-    Diff is 0,
-    !.
-
-diff(_,_,Diff) :-
-    Diff is 1,
-    !.
+%evaluateMovement cmpute a score for each move given the goal, the score is weighted by the priority of the move.
+%the priority is: rotate, [left, right], down.
+%the ratio is: 
+%   a player first rotate a tetramino in the proper rotation
+%   then align it to the point she wants to reach
+%   then push down the tetramino in that point
+%this sequence of operation is the most common, so priority are shaped around this scenario, however it can deal also with more complex situations.
 
 evaluateMovement([rotate, (T1,_,_), (T2,_,_)], Score) :-
     diff(T1,T2,Diff),
@@ -519,59 +833,39 @@ evaluateMovement([down, (_,R1,_), (_,R2,_)], Score) :-
 	priority(down,Priority),
 	Score is (R2 - R1) * Priority * -1.
 
-planner(Start, Goal, Actions, Heuristic, Plan) :-
-    planner(Start, Goal, Actions, Heuristic, [Start], [], Plan).
+priority(left,10).
+priority(right,10).
+priority(down,1).
+priority(rotate,1). %rotate has the minimum priority, it's executed as last move. 
 
-planner(Goal, Goal, _, _, _,Plan, Plan) :- !.
+diff(T1,T2,Diff) :-
+    T1 == T2,
+    Diff is 0,
+    !.
 
-%nodes must have the following shape:
-%after the evaluation with the heuristic the node became:
-%[score,action]
-%all the evluated nodes are given in order from the most to the least promising
-planner(Start, Goal, Actions, Heuristic, VisitedNodes, TempPlan, Plan) :-
-	evaluateActions(Actions,Heuristic,Start,Goal,OrderedNodes),
-    member(Node, OrderedNodes), %take the first element in the list [[score,action]...], it's also the bactracking point if call(Z) fail.
-    nth1(2, Node, Action), %take the action 
-    %nth1(1, Node, Score), %take the score
-    Z =.. [Action,Start,Start1],
-    call(Z), %it fails if the action is not elegible.
-    \+member(Start1,VisitedNodes), %it fails if the goal has been already visited.
-    append(VisitedNodes,[Start1],VisitedNodes1),
-    append(TempPlan,[Action],TempPlan1),
-	planner(Start1, Goal, Actions, Heuristic, VisitedNodes1, TempPlan1, Plan).
+diff(_,_,Diff) :-
+    Diff is 1,
+    !.
 
-evaluateActions(Actions, Heuristic, Input, Goal, OrderedActions) :-
-	evaluateActions(Actions, Heuristic, Input, Goal, [], OrderedActions).
+%getPathOfBestMove search for the best move and then call the planner for the tetris path problem.
+%start and goal are inverted because I want to find the path starting from the goal and coming back to the start.
+%This allow to deal easily with particulare cases like slide or t-spin.
+%If a certain move is actually impossibile to reach (eg: trapped teramino) the next move is considered.
 
-evaluateActions([], _, _, _, [], []).
+getPathOfBestMove(T,Plan) :-
+    findMoves(T,ScoreList), 
+    member(GoalNode, ScoreList),
+    nth1(2, GoalNode, Goal), %take the goal 
+    start(Start), 
+    write(Goal),
+    serchPath(Goal, Start, RevPlan),
+    reverse(RevPlan,Plan),
+    !.
 
-evaluateActions([], _, _, _, TempActions, OrderedActions) :-
-	sort(1, @>=, TempActions, OrderedActions).
-	
-evaluateActions([Action|T], Heuristic, Input, Goal, TempActions, OrderedActions) :-
-    %[action, input, output]
-    Eval = [Action, Input, Goal],
-    Z =.. [Heuristic,Eval,Score], 
-    call(Z),
-    %epurateZero(Score,Action,ScoreActionL), %score zero is given for useless moves given the goal
-	append(TempActions, [[Score,Action]], TempActions1),
-	evaluateActions(T, Heuristic, Input, Goal, TempActions1, OrderedActions).
-
-epurateZero(0, _, []) :- !.
-epurateZero(Score, Action, [[Score,Action]]).
-
-%call the planner for the tetris path problem, start and goal are inverted because I want to find the path starting from the
-%goal and coming back to the start.
-%This allow to deal easily with particulare cases live slide or T-spin.
-serchPath(Plan) :-
+serchPath(Start, Goal, Plan) :-
     setof(A, action(A), Actions),
     Heuristic=evaluateMovement, 
-    start(Goal), 
-    goal(Start),
-    planner(Start, Goal, Actions, Heuristic, RevPlan),
-    reverse(RevPlan,Plan).
-
-
+    planner(Start, Goal, Actions, Heuristic, Plan).
 
 %%%%%%%%%%%%%%%%%%%%%%%%
 %Debugging Helper Rules%
