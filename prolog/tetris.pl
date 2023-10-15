@@ -1,45 +1,3 @@
-:- use_module(library(lists)).
-:- use_module(planner).
-:- use_module(library(http/http_server)).
-:- use_module(library(http/http_session)).
-
-%Web Server Interface Config
-/*
-Possible Action:
--- startTetramino (assert the start tetramino)
-
--- path (find the best path for the current tetramino)
-
--- retractOccCell (reset all the occCell facts)
-
-
-...
-*/
-:- initialization
-    http_server([port(7777)]).
-
-:- http_handler(root(home), writeGB, []).
-
-%occCell/R/C (assert an occupied cell)
-:- http_handler(root(occCell/R/C), reqOccCell(R,C), []).
-
-:- http_handler(root(path/T), path(T), []).
-
-reqOccCell(R,C,_Request) :-
-    format('Content-type: text/plain~n~n'),
-    assert(occCell(R,C)),
-    writeGameBoard.
-
-path(T,_Request) :-
-    format('Content-type: text/plain~n~n'),
-    getPathOfBestMove(T,Plan),
-    write(Plan).
-
-writeGB(_Request) :-
-    format('Content-type: text/plain~n~n'),
-    writeGameBoard.
-%
-
 /*To do (8/10):
 -prima integrazione col gioco Js (TEST)
 
@@ -50,50 +8,90 @@ To do (15/10):
 
 -evoluzione dell'algoritmo allo step precedente per farlo diventare min/max
 
+-implementazione delle sessioni
+
 -implementare il logger che spieghi le mosse
     prende la catena di valutazione delle mosse e ne siega la ratio
 
+
 - algoritmo genetico per pesi euristica di valutazione??
 */
+
+:- use_module(library(lists)).
+:- use_module(planner).
+:- use_module(library(http/http_server)).
+:- use_module(library(http/http_session)).
+:- use_module(library(http/http_cors)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Web Server Interface Config%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+:- set_setting(http:cors, [*]).
+:- initialization
+    http_server([port(7777)]).
+
+%the root is for debugging printing the current GameBoard.
+:- http_handler(root(home), writeGB, []).
+
+writeGB(_Request) :-
+    format('Content-type: text/plain~n~n'),
+    writeGameBoard.
+
+%ocell/R/C (assert an occupied cell)
+:- http_handler(root(ocell/R/C), reqOccCell(R,C), []).
+
+reqOccCell(R,C,_Request) :-
+    cors_enable,
+    atom_number(R, R1),
+    atom_number(C, C1),
+    assertz(occCell(R1,C1)),
+    reply_json_dict('ok').
+
+%retcell(retract all the occupied cell)
+:- http_handler(root(retcell), retractCell, []).
+
+retractCell(_Request) :-
+    cors_enable,
+    retractall(occCell(_,_)),
+    reply_json_dict('ok').
+
+%start/T/R/C (assert the starting tetramin0)
+:- http_handler(root(start/T/R/C), reqStart(T,R,C), []).
+
+reqStart(T,R,C,_Request) :-
+    cors_enable,
+    retractall(start(_)),
+    string_to_atom(T,T1),
+    atom_number(R, R1),
+    atom_number(C, C1),
+    assertz(start((T1,R1,C1))),
+    reply_json_dict('ok').
+
+%path find the best path for the tetramino
+:- http_handler(root(path/T), path(T), []).
+
+path(T,_Request) :-
+    cors_enable,
+    getPathOfBestMove(T,Plan),
+    reply_json_dict(Plan).
+%
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Defining the game board properties and the occupied cells%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 gameBoardW(10).
-gameBoardH(10).
-%occCell(R,C), assert this starting from the first row(0) to the last in asending order.
+gameBoardH(20).
+
 :-dynamic(occCell/2).
 %the starting position of the playing tetramino
 %tetramino(T,R,C).
-:-dynamic(start/3).
+:-dynamic(start/1).
 
 /*
-occCell(7,0).
-occCell(7,1).
-occCell(7,2).
-occCell(7,6).
-occCell(7,7).
-occCell(7,8).
-occCell(7,9).
-
-occCell(8,0).
-occCell(8,1).
-occCell(8,2).
-occCell(8,6).
-occCell(8,7).
-occCell(8,8).
-occCell(8,9).
-
-occCell(9,0).
-occCell(9,1).
-occCell(9,2).
-occCell(9,3).
-occCell(9,5).
-occCell(9,7).
-occCell(9,8).
-occCell(9,9).
+occCell(R,C) :-
+    http_session_data(occCell(R,C)),!.
 */
 start((l1,1,5)).
-
 
 %%%%%%%%%%%%%%%%%
 %Auxiliary rules%
@@ -142,7 +140,7 @@ gen(Cur, Top, Next):-
 %
 %Mapping each tetramino with its rotations.
 %Can be used also to obtain the next rotation of a given tetramino.
-rotation(o,o,o).
+rotation(o,o1,o1).
 rotation(i, i1, i2).
 rotation(i, i2, i1).
 rotation(z, z1, z2).
@@ -171,11 +169,11 @@ freeCell(R,C) :-
     \+occCell(R,C).
 
 %Generate all possible free cell on the gameboard
-freeCell1(R,C) :-     
-    gameBoardH(W),
-    gen(0, W, R),
+freeCell1(R,C) :- 
     gameBoardH(H),
-    gen(0, H, C),
+    gen(0, H, R),    
+    gameBoardW(W),
+    gen(0, W, C),    
     \+occCell(R,C).
 
 %Check if there is space for an a tetromino on the gameboard given the reference point.
@@ -190,7 +188,7 @@ freeCell1(R,C) :-
 %[R4;C4][R2;C2]
 %[R3;C3][R1;C1]
 
-fitPiece(o,R1,C1,R2,C2,R3,C3,R4,C4) :- 
+fitPiece(o1,R1,C1,R2,C2,R3,C3,R4,C4) :- 
     C2 = C1,    
     R3 = R1,    
     R4 = R2,
@@ -549,7 +547,7 @@ placePiece(T,R1,C1,L) :-
 assertPiece([]).
 
 assertPiece([H|T]):-
-    asserta(H),
+    assertz(H),
     assertPiece(T).
 	
 retractPiece([]).
@@ -595,6 +593,8 @@ holesInColumn(N) :-
 holesInColumn(0).
 
 holesColumn(R1,C) :-
+    gameBoardW(W),
+    gen(0, W, C),
     occCell(R,C),
     freeCell1(R1,C),
     R1 > R.
@@ -612,6 +612,8 @@ holesInRow(N) :-
 holesInRow(0).
 
 holesRow(R,C1) :-
+    gameBoardH(H),
+    gen(0, H, R),
     occCell(R,C),
     freeCell1(R,C1),
     C1 > C.
@@ -635,7 +637,7 @@ entropyOfRow(R,Ent) :-
     Ent is -OccRatio*Log2OccRatio -FreeRatio*Log2FreeRatio,
     !.
 
-entropyOfRow(R, 0).
+entropyOfRow(_, 0).
 
 avgEntropyOfGameBoard(AvgEnt) :-
     findall((Ent),entropyOfRow(_,Ent),EntropyXRow), 
@@ -668,7 +670,7 @@ gameBoardScore(S) :-
     holesInRow(HR),
     avgEntropyOfGameBoard(AvgEnt),
     numberOfclearedRow(CR),
-    S is HC + HR + AvgEnt - CR.  
+    S is AvgEnt.  
 
 scoreMoves([],M,M).
 
@@ -761,7 +763,7 @@ diff(_,_,Diff) :-
 %getPathOfBestMove search for the best move and then call the planner for the tetris path problem.
 %start and goal are inverted because I want to find the path starting from the goal and coming back to the start.
 %This allow to deal easily with particulare cases like slide or t-spin.
-%If a certain move is actually impossibile to reach (eg: trapped teramino) the next move is considered.
+%If a certain move is actually impossibile to reach (eg: trapped tetramino) the next move is considered.
 
 getPathOfBestMove(T,Plan) :-
     findMoves(T,ScoreList), 

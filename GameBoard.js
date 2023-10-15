@@ -1,5 +1,5 @@
 import Tetromino from "./Tetromino.js";
-import mapGameBoard from "./MapperAI.js";
+import MapperAI from "./MapperAI.js";
 export default class GameBoard {
     gameBoardW = 10;
     gameBoardH = 20;
@@ -32,7 +32,9 @@ export default class GameBoard {
 
     #tetrominoMoving = false;
 
-    #tetromino = null;
+    tetromino = null;
+
+    fetched = false;
 
     #interval = null;
     #intervalMs = 1000;
@@ -52,6 +54,14 @@ export default class GameBoard {
     #p2Left = false;
     #p2Right = false;
     #p2Down = false;
+
+    #pressPause = false;
+
+    pause = false;
+
+    #aiMapper = null;
+    #aiEnabled = false;
+    aiMoves = [];
 
     //all the keyCode here: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/keyCode
     #keydownP1 = event => {
@@ -86,50 +96,72 @@ export default class GameBoard {
         }
     }
 
+    #keydownPause = event => {
+        if (event.code == "KeyP") {
+            this.#pressPause = true;
+        }
+    }
+
     constructor(option) {
         var mov = this;
         this.playersNumber = option[0];
         this.playerOne = option[1];
         this.playerTwo = option[2];
+        this.#aiMapper = new MapperAI();
 
         //assign the proper event listener for human player
-        if(this.playerOne == 'Player'){
+        if (this.playerOne == 'Player') {
             document.addEventListener("keydown", this.#keydownP1);
+        } else if (this.playerOne == 'AI') {
+            this.#aiEnabled = true;
         }
-        if(this.playerTwo == 'Player'){
+
+        if (this.playerTwo == 'Player') {
             document.addEventListener("keydown", this.#keydownP2);
+        } else if (this.playerTwo == 'AI') {
+            this.#aiEnabled = true;
         }
+
+        document.addEventListener("keydown", this.#keydownPause);
 
         this.#p1NextTetromino = new Tetromino();
         this.#p2NextTetromino = new Tetromino();
         this.p1NextTetrominoIndex = this.#p1NextTetromino.color;
         this.p2NextTetrominoIndex = this.#p2NextTetromino.color;
-        this.#interval = setInterval(function () { mov.#move(true) }, mov.#intervalMs);
-        this.#levelInterval = setInterval(function () { mov.#nextSec() }, 1000);
+        this.#setIntervalMovement(this.#intervalMs);
+        this.#levelInterval = setInterval(function () { if (!mov.pause) { mov.#nextSec() } }, 1000);
     }
 
     gameLoop() {
         if (!this.stopPlaying) {
-            if (!this.#tetrominoMoving) {                
-                this.#checkCompleteLine();
-                this.#tetraX = this.#startX;
-                this.#tetraY = this.#startY;
-                this.#tetrominoMoving = true;
+            if (!this.pause) {
+                if (!this.#tetrominoMoving) {
+                    this.#checkCompleteLine();
+                    this.#tetraX = this.#startX;
+                    this.#tetraY = this.#startY;
+                    this.#tetrominoMoving = true;
 
-                //avoid to switch turn when in VS mode
-                if (this.playersNumber == 2) {
-                    this.turn = !this.turn;
+                    //switch turn when in VS mode, avoid it elsewhere
+                    if (this.playersNumber == 2) {
+                        this.turn = !this.turn;
+                    } else {
+                        this.turn = true;
+                    }
+                    this.#assignNextTetromino(this.turn);
+                    this.gameOver = !(this.#checkCollision());
+
+                    if (this.#aiEnabled) {
+                        this.#aiMapper.getSolution(this);
+                    }
                 } else {
-                    this.turn = true;
+                    //then allows for player movement
+                    if (this.#aiEnabled) {
+                        this.#executeAiMoves();
+                    }
+                    this.#move(false)
                 }
-                this.#assignNextTetromino(this.turn);
-                this.gameOver = !(this.#checkCollision());
-
-            } else {
-                //then allows for player movement
-                this.#move(false);
             }
-
+            this.#setPause();
         } else {
             this.#placeTetramino();
             clearInterval(this.#interval);
@@ -139,13 +171,17 @@ export default class GameBoard {
         this.stopPlaying = (this.gameOver || this.p1Wins || this.p2Wins || this.draw);
     }
 
+    #setIntervalMovement(intervalMs) {
+        var mov = this;
+        mov.#intervalMs = intervalMs;
+        this.#interval = setInterval(function () { if (!mov.pause) { mov.#move(true) } }, mov.#intervalMs);
+    }
+
     #nextSec() {
         this.sec = (this.sec + 1) % 60;
         if (this.sec == 0) {
             clearInterval(this.#interval);
-            var mov = this;
-            mov.#intervalMs = mov.#intervalMs * 0.8;
-            this.#interval = setInterval(function () { mov.#move(true) }, mov.#intervalMs);
+            this.#setIntervalMovement(this.#intervalMs * 0.8);
             this.level = this.level + 1;
         }
 
@@ -165,50 +201,81 @@ export default class GameBoard {
 
     #assignNextTetromino(turn) {
         if (turn) {
-            this.#tetromino = Object.assign(this.#p1NextTetromino);
+            this.tetromino = Object.assign(this.#p1NextTetromino);
             this.#p1NextTetromino = new Tetromino();
             this.p1NextTetrominoIndex = this.#p1NextTetromino.color;
         } else {
-            this.#tetromino = Object.assign(this.#p2NextTetromino);
+            this.tetromino = Object.assign(this.#p2NextTetromino);
             this.#p2NextTetromino = new Tetromino();
             this.p2NextTetrominoIndex = this.#p2NextTetromino.color;
         }
     }
 
+    #rotate() {
+        this.tetromino.rotate();
+    }
+
+    #undoRotation() {
+        this.tetromino.undoRotation();
+    }
+
+    #left() {
+        this.#tetraX = this.#tetraX - 1;
+    }
+
+    #right() {
+        this.#tetraX = this.#tetraX + 1;
+    }
+
+    #down() {
+        this.#tetraY = this.#tetraY + 1;
+        //check if down movement is legit
+        //non legit down movement blocks the tetramino on the board
+        if (!this.#checkCollision()) {
+            this.#tetrominoMoving = false;
+            this.#undoDown();
+        }
+    }
+
+    #undoDown() {
+        this.#tetraY = this.#tetraY - 1;
+    }
+
     #move(forceDown) {
         if ((this.#p1Rotate && this.turn) || (this.#p2Rotate && !this.turn)) {
-            this.#tetromino.rotate();
+            this.#rotate();
             //check if rotation is legit
             if (!this.#checkCollision()) {
-                this.#tetromino.undoRotation();
+                this.#undoRotation();
             }
 
         }
         if ((this.#p1Left && this.turn) || (this.#p2Left && !this.turn)) {
-            this.#tetraX = this.#tetraX - 1;
+            this.#left();
             //check if left movement is legit
             if (!this.#checkCollision()) {
-                this.#tetraX = this.#tetraX + 1;
+                this.#right();
             }
         }
         if ((this.#p1Right && this.turn) || (this.#p2Right && !this.turn)) {
-            this.#tetraX = this.#tetraX + 1;
+            this.#right();
             //check if right movement is legit
             if (!this.#checkCollision()) {
-                this.#tetraX = this.#tetraX - 1;
+                this.#left();
             }
         }
         if ((this.#p1Down && this.turn) || forceDown || (this.#p2Down && !this.turn)) {
-            this.#tetraY = this.#tetraY + 1;
-            //check if down movement is legit
-            //non legit down movement blocks the tetramino on the board
-            if (!this.#checkCollision()) {
-                this.#tetrominoMoving = false;
-                this.#tetraY = this.#tetraY - 1;
-            }
+            this.#down();
         }
         this.#resetKeys();
         this.#updateBoard();
+    }
+
+    #setPause() {
+        if (this.#pressPause) {
+            this.pause = !(this.pause);
+        }
+        this.#pressPause = false;
     }
 
     //avoid continuous firing of key
@@ -228,7 +295,7 @@ export default class GameBoard {
         for (let i = 0; i < 4; i++) {
             for (let j = 0; j < 4; j++) {
                 //for all the cell in the tetramino matrix that actually contains a block
-                if (this.#tetromino.matrix[i][j] == 1) {
+                if (this.tetromino.matrix[i][j] == 1) {
                     //check if it will be displayed in a invalid position (out of screen or above another blocked tetramino)
                     if ((i + this.#tetraY < 0) || (i + this.#tetraY >= this.gameBoardH) || (j + this.#tetraX < 0) || (j + this.#tetraX >= this.gameBoardW)
                         || this.gameBoardMatrix[i + this.#tetraY][j + this.#tetraX] < 0) {
@@ -252,14 +319,14 @@ export default class GameBoard {
         }
         for (let i = 0; i < 4; i++) {
             for (let j = 0; j < 4; j++) {
-                if (this.#tetromino.matrix[i][j] == 1) {
+                if (this.tetromino.matrix[i][j] == 1) {
                     if ((i + this.#tetraY >= 0) && (i + this.#tetraY < this.gameBoardH) && (j + this.#tetraX >= 0) && (j + this.#tetraX < this.gameBoardW)) {
-                        this.gameBoardMatrix[i + this.#tetraY][j + this.#tetraX] = this.#tetromino.matrix[i][j] * this.#tetromino.color * moving;
+                        this.gameBoardMatrix[i + this.#tetraY][j + this.#tetraX] = this.tetromino.matrix[i][j] * this.tetromino.color * moving;
                     }
                 }
                 //test white for make visible the tetraminos' matix
                 /*
-                if(this.#tetromino.matrix[i][j] == 0){
+                if(this.tetromino.matrix[i][j] == 0){
                     this.gameBoardMatrix[i + this.#tetraY][j + this.#tetraX] = 8;
                 }
                 */
@@ -318,5 +385,22 @@ export default class GameBoard {
         }
     }
 
-    
+    #executeAiMoves() {
+        const move = this.aiMoves[0];
+        this.aiMoves.shift();
+        switch (move) {
+            case 'rotate':
+                this.#p1Rotate = true;
+                break;
+            case 'left':
+                this.#p1Left = true;
+                break;
+            case 'right':
+                this.#p1Right = true;
+                break;
+            case 'down':
+                this.#p1Down = true;
+                break;
+        }
+    }
 }

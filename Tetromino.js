@@ -5,9 +5,9 @@ export default class Tetromino{
 //see https://stackoverflow.com/questions/38594574/tetris-2d-array-logic
     #possibleShape = [
         [0x4C40, 0x0E40, 0x4640, 0x4E00], // 'T'
-        [0x8C40, 0x6C00, 0x8C40, 0x6C00], // 'S'
-        [0x4C80, 0xC600, 0x4C80, 0xC600], // 'Z'
-        [0x4444, 0x0F00, 0x4444, 0x0F00] , // 'I'
+        [0x8C40, 0x6C00, 0x8C40, 0x6C00], // 'Z'
+        [0x4C80, 0xC600, 0x4C80, 0xC600], // 'S'
+        [0x4444, 0x0F00, 0x4444, 0x0F00], // 'I'
         [0x44C0, 0xE20 , 0x6440, 0x8E00], // 'L'
         [0xC440, 0xE80 , 0x4460, 0x2E00], // 'J'
         [0xCC00, 0xCC00, 0xCC00, 0xCC00]  // 'O'
@@ -18,7 +18,7 @@ export default class Tetromino{
 
     #indexPosition = 0;
 
-    #indexPiece = 0;
+    indexPiece = 0;
 
     #piece = null;
 
@@ -30,9 +30,9 @@ export default class Tetromino{
               [0,0,0,0]];
     
     constructor(){
-        this.#indexPiece = Math.floor((Math.random() * this.#possibleShape.length) );
-        this.#piece = this.#possibleShape[this.#indexPiece];
-        this.color = this.#tetrominoColors[this.#indexPiece];
+        this.indexPiece = Math.floor((Math.random() * this.#possibleShape.length) );
+        this.#piece = this.#possibleShape[this.indexPiece];
+        this.color = this.#tetrominoColors[this.indexPiece];
         this.#position = this.#piece[this.#indexPosition];
         this.#drawPieceOnMatrix();
         //console.log(this.matrix);

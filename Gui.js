@@ -102,6 +102,12 @@ export default function drawGameCanvas(ctx, canvas, gB){
             }
             
     }
+    //PAUSE
+    if(gB.pause){
+        endText = "Pause";
+        endTextX = 195;
+        endTextY = 238;
+    }
 
     //GAME ENDS
     if(gB.gameOver){
@@ -124,7 +130,7 @@ export default function drawGameCanvas(ctx, canvas, gB){
         endTextX = 172;
         endTextY = 238;
     }
-    if(gB.stopPlaying){
+    if(gB.stopPlaying || gB.pause){
         ctx.fillStyle = 'black';
         ctx.font = '22px Arial';
         ctx.fillRect(128, 195, 200, 70);
