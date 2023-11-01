@@ -16,7 +16,7 @@ function MenuLoop() {
     } else {
         clearInterval(interval);
         gB = new GameBoard(option);
-        interval = setInterval(GameLoop, 1000 / 120);
+        interval = setInterval(GameLoop, 1000 / 60);
     }
 }
 

@@ -2,50 +2,36 @@ export default class MapperAI {
     #port = 7777;
     #possibleShape = ['t', 'z', 's', 'i', 'l', 'j', 'o'];
 
-    async #callApi(apiPath) {
-        try {
-            const response = await fetch('http://localhost:' + this.#port + '/' + apiPath);
-            if (!response.ok) {
-                throw new Error('API request failed');
-            }
-            const data = await response.json();
-            // Process the response data here 
-            //console.log(data);
-            return data;
-        } catch (error) {
-            // Handle any errors here 
-            error.log(error);
-            throw new Error(error);
+    #callApi(apiPath, method, load) {
+        const xhr = new XMLHttpRequest();
+        xhr.open(method, 'http://localhost:' + this.#port + '/' + apiPath, false);
+        xhr.send();
+        if (xhr.status === 200) {
+           return xhr.responseText;
+        } else {
+           throw new Error('Request failed: ' + xhr.statusText);
         }
-    }
+     }
 
     #assertOccupiedCell(gB) {
         var apiPath;
-        this.#callApi('retcell');
-        for (let i = 0; i < gB.gameBoardH; i++) {
-            for (let j = 0; j < gB.gameBoardW; j++) {
-
-                if (gB.gameBoardMatrix[i][j] < 0) {
-                    apiPath = 'ocell/' + i + '/' + j
-                    this.#callApi(apiPath);
-                }
+        for (let i = 0; i < gB.tetraminoPositionsMatrix.length; i++) {
+            apiPath = 'ocell/' + gB.tetraminoPositionsMatrix[i][0] + '/' + gB.tetraminoPositionsMatrix[i][1];
+            console.log(apiPath);
+            this.#callApi(apiPath, 'GET', null);
             }
-        }
+        this.#callApi('newgb', 'GET', null);
     }
 
     #assertTetraminos(gB) {
         var tetromino = this.#possibleShape[gB.tetromino.indexPiece] + '1/1/5';
-        console.log(tetromino);
-        this.#callApi('start/' + tetromino);
+        this.#callApi('start/' + tetromino, 'GET', null);
     }
 
     #getPath(gB) {
         const tetromino = this.#possibleShape[gB.tetromino.indexPiece]
-        const data = this.#callApi('path/' + tetromino);
-        data.then(function (result) {
-            console.log(result);
-            gB.aiMoves = result;
-        })
+        const data = this.#callApi('path/' + tetromino, 'GET', null);
+        gB.aiMoves = JSON.parse(data);
     }
 
     getSolution(gB) {
@@ -53,6 +39,8 @@ export default class MapperAI {
         this.#assertOccupiedCell(gB);
         this.#assertTetraminos(gB);
         this.#getPath(gB);
-
+    }
+    reset(){
+        this.#callApi('retcell', 'GET', null);
     }
 }

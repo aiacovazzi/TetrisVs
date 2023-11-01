@@ -61,7 +61,9 @@ export default class GameBoard {
 
     #aiMapper = null;
     #aiEnabled = false;
+    #readMoves = false;
     aiMoves = [];
+    tetraminoPositionsMatrix = [];
 
     //all the keyCode here: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/keyCode
     #keydownP1 = event => {
@@ -122,6 +124,10 @@ export default class GameBoard {
             this.#aiEnabled = true;
         }
 
+        if (this.#aiEnabled && !this.gameOver) {
+            this.#aiMapper.reset();
+        }
+
         document.addEventListener("keydown", this.#keydownPause);
 
         this.#p1NextTetromino = new Tetromino();
@@ -149,13 +155,15 @@ export default class GameBoard {
                     }
                     this.#assignNextTetromino(this.turn);
                     this.gameOver = !(this.#checkCollision());
-
-                    if (this.#aiEnabled) {
+                    //this.pause = true;
+                    if (this.#aiEnabled && !this.gameOver) {
                         this.#aiMapper.getSolution(this);
+                        
                     }
                 } else {
                     //then allows for player movement
                     if (this.#aiEnabled) {
+                        this.#readMoves = true;
                         this.#executeAiMoves();
                     }
                     this.#move(false)
@@ -174,7 +182,7 @@ export default class GameBoard {
     #setIntervalMovement(intervalMs) {
         var mov = this;
         mov.#intervalMs = intervalMs;
-        this.#interval = setInterval(function () { if (!mov.pause) { mov.#move(true) } }, mov.#intervalMs);
+        this.#interval = setInterval(function () { if (!mov.pause && !mov.#aiEnabled) { mov.#move(true) } }, mov.#intervalMs);
     }
 
     #nextSec() {
@@ -313,6 +321,7 @@ export default class GameBoard {
     }
 
     #placeTetramino() {
+        this.tetraminoPositionsMatrix = [];
         let moving = -1;
         if (this.#tetrominoMoving) {
             moving = 1;
@@ -322,6 +331,7 @@ export default class GameBoard {
                 if (this.tetromino.matrix[i][j] == 1) {
                     if ((i + this.#tetraY >= 0) && (i + this.#tetraY < this.gameBoardH) && (j + this.#tetraX >= 0) && (j + this.#tetraX < this.gameBoardW)) {
                         this.gameBoardMatrix[i + this.#tetraY][j + this.#tetraX] = this.tetromino.matrix[i][j] * this.tetromino.color * moving;
+                        this.tetraminoPositionsMatrix.push([i + this.#tetraY, j + this.#tetraX]);
                     }
                 }
                 //test white for make visible the tetraminos' matix
@@ -386,21 +396,34 @@ export default class GameBoard {
     }
 
     #executeAiMoves() {
-        const move = this.aiMoves[0];
-        this.aiMoves.shift();
-        switch (move) {
-            case 'rotate':
-                this.#p1Rotate = true;
-                break;
-            case 'left':
-                this.#p1Left = true;
-                break;
-            case 'right':
-                this.#p1Right = true;
-                break;
-            case 'down':
+        //console.log(this.aiMoves);
+        if (this.#readMoves) {
+            if (this.aiMoves.length) {
+                const move = this.aiMoves[0];
+                //console.log(this.aiMoves);
+                
+                this.aiMoves.shift();
+                switch (move) {
+                    case 'rotate':
+                        this.#p1Rotate = true;
+                        break;
+                    case 'left':
+                        this.#p1Left = true;
+                        break;
+                    case 'right':
+                        this.#p1Right = true;
+                        break;
+                    case 'down':
+                        this.#p1Down = true;
+                        break;
+                }
+            } else {
+                //when the array of moves is empty
+                //adding down commit the position and force the next tetromino to appear
                 this.#p1Down = true;
-                break;
+                this.#readMoves = false;
+            }            
         }
+        
     }
 }
