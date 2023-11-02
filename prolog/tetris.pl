@@ -95,10 +95,28 @@ gameBoardH(20).
 %tetramino(T,R,C).
 :-dynamic(start/1).
 
-occCell(19,0).
 occCell(19,1).
 occCell(19,2).
+occCell(19,3).
+occCell(19,4).
+occCell(19,5).
+occCell(19,6).
+occCell(19,7).
+occCell(19,8).
+occCell(19,9).
 occCell(18,1).
+occCell(18,2).
+occCell(16,1).
+occCell(16,2).
+occCell(17,1).
+occCell(17,2).
+occCell(17,3).
+occCell(17,4).
+occCell(17,5).
+occCell(17,6).
+occCell(17,7).
+occCell(17,8).
+occCell(17,9).
 
 /*
 occCell(R,C) :-

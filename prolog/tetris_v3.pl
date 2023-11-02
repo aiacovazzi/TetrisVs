@@ -92,8 +92,6 @@ path(T,_Request) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 gameBoardW(10).
 gameBoardH(20).
-:-dynamic(emptyRow/1).
-:-dynamic(fullRow/1).
 :-dynamic(occCell/2).
 %the starting position of the playing tetramino
 %tetramino(T,R,C).
@@ -103,10 +101,29 @@ gameBoardH(20).
 occCell(R,C) :-
     http_session_data(occCell(R,C)),!.
 */
-occCell(19,0).
+
 occCell(19,1).
 occCell(19,2).
+occCell(19,3).
+occCell(19,4).
+occCell(19,5).
+occCell(19,6).
+occCell(19,7).
+occCell(19,8).
+occCell(19,9).
 occCell(18,1).
+occCell(18,2).
+occCell(16,1).
+occCell(16,2).
+occCell(17,1).
+occCell(17,2).
+occCell(17,3).
+occCell(17,4).
+occCell(17,5).
+occCell(17,6).
+occCell(17,7).
+occCell(17,8).
+occCell(17,9).
 %%%%%%%%%%%%%%%%%
 %Auxiliary rules%
 %%%%%%%%%%%%%%%%%
@@ -149,65 +166,26 @@ gen(Cur, Top, Next):-
   gen(Cur1, Top, Next).
 %
 
-%matrix elemtent substitution
-replace_nth(N, OldElem, NewElem, List, List2) :-
-    length(L1, N),
-    append(L1, [OldElem|Rest], List),
-    append(L1, [NewElem|Rest], List2).
-
-replace_m_n(Matrix, I, J, NewValue, NewMatrix) :-
-    replace_nth(I, Old1, New1, Matrix, NewMatrix),
-    replace_nth(J, _OldElem2, NewValue, Old1, New1).
-
-%Generate the matrix representing the state of the gameboarg starting from the occupied cells
-createGameBoardMatrix(M) :-
-	createGameBoardMatrix(0,0,[],M).
-
-createGameBoardMatrix(R,_,TempM,TempM) :- 
-    gameBoardH(R),
-    !.
-
-createGameBoardMatrix(R,C,TempM,M) :- 
-    createGameBoardRow(R,C,Row), 
-    append(TempM,[Row],TempM1),
-    R1 is R + 1, 
-    createGameBoardMatrix(R1,C,TempM1,M).
-
-createGameBoardRow(R,C,Row) :- 
-    createGameBoardRow(R,C,[],Row).
-
-createGameBoardRow(_,C,TempRow,TempRow) :- 
-    gameBoardW(C),!.
-
-createGameBoardRow(R,C,TempRow,Row) :- 
-    occCell(R,C), 
-    append(TempRow,[[o]],TempRow1),
-    C1 is C + 1, 
-    createGameBoardRow(R,C1,TempRow1,Row),
-    !.
-
-createGameBoardRow(R,C,TempRow,Row) :- 
-    append(TempRow,[[]],TempRow1),
-    C1 is C + 1, 
-    createGameBoardRow(R,C1,TempRow1,Row),
-    !.
+%Generate the list that contain all the occupied cells
+createGameBoardList(GbList) :-
+    setof(([R,C]),occCell(R,C),GbList).
+	
 %
 
+%remove all the rows in the firt list indexed by rownumber
+removeRows([],GbListNew,GbListNew).
 
-%auxiliary row generator used for creating prototype of full and empty rows.
-createRow(N,Element,Row) :-
-    createRow(0,N,Element,[],Row).
+removeRows([R|T],GbListOld,GbListNew) :-
+    delete(GbListOld,[R,_],GbListOld1),
+    removeRows(T,GbListOld1,GbListNew).
 
-createRow(N,N,_,TempRow,TempRow).
+first_items([], []).
+first_items([[H|_]|T], [H|T2]) :-
+    first_items(T, T2).
 
-createRow(N0,N,Element,TempRow,Row) :-
-    append(Element,TempRow,TempRow1),
-    N1 is N0 + 1,
-    createRow(N1,N,Element,TempRow1,Row).
-
-:-gameBoardW(W),createRow(W,[[]],Row),assert(emptyRow(Row)).
-:-gameBoardW(W),createRow(W,[[o]],Row),assert(fullRow(Row)). 
-%
+second_items([], []).
+second_items([[H|_]|T], [H|T2]) :-
+    second_items(T, T2).
   
 %/////////////////////////////////
 
@@ -237,75 +215,65 @@ rotation(j, j2, j3).
 rotation(j, j3, j4).
 rotation(j, j4, j1).
 
-%Check if a cell is occupied in the matrix
-occCellM(R,C,M) :-
-    nth0(R,M,Row),
-    nth0(C,Row,T),
-    nth0(0,T,_).
+%Check if a cell is occupied in the list
+occCellL(R,C,GbList) :-
+    memberchk([R,C],GbList).
+
+%Check/Generate cell  occupied in the list
+occCellLG(R,C,GbList) :-
+    member([R,C],GbList).
 
 %Check if a cell is avalaible and if the indexes are not out of bound.
-freeCell(R,C,M) :- 
+freeCell(R,C,GbList) :- 
     gameBoardH(H), 
     gameBoardW(W), 
     R >= 0, R<H, 
     C >=0, C<W, 
-    \+occCellM(R,C,M).
-
-%Generate all the occupied cell on the gameboard
-occCellM1(R,C,M) :- 
-    gameBoardH(H),
-    gen(0, H, R),    
-    gameBoardW(W),
-    gen(0, W, C),    
-    occCellM(R,C,M).
+    \+occCellL(R,C,GbList).
 
 %Generate all the free cell on the gameboard
-freeCell1(R,C,M) :- 
+freeCell1(R,C,GbList) :- 
     gameBoardH(H),
     gen(0, H, R),    
     gameBoardW(W),
     gen(0, W, C),    
-    \+occCellM(R,C,M).
+    \+occCellL(R,C,GbList).
 
 %Check if there is space for an a tetromino on the gameboard given the reference point.
 %R1;C1 is the reference point.
-%Some of the fitPiece rules uses the "when" predicate available in the "Constraint Logic Programming"
-%library of SwiProlog in order to delay the execution of eq/3 when the information are available.
-%https://www.swi-prolog.org/pldoc/man?section=clp
-
 %O Tetramino
 %[ ][ ]
 %[ ][x]
 %[R4;C4][R2;C2]
 %[R3;C3][R1;C1]
 
-fitPiece(o1,R1,C1,R2,C2,R3,C3,R4,C4,M) :- 
+fitPiece(o1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     C2 = C1,    
     R3 = R1,    
     R4 = R2,
     C4 = C3,
     eq(C3,C1,-1),
     eq(R2,R1,-1),
-    freeCell(R1,C1,M),
-    freeCell(R2,C2,M),
-    freeCell(R3,C3,M),
-    freeCell(R4,C4,M).
+    freeCell(R1,C1,GbList),
+    freeCell(R2,C2,GbList),
+    freeCell(R3,C3,GbList),
+    freeCell(R4,C4,GbList).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %I Tetramino
 %[ ][x][ ][ ]
 %[R2;C2][R1;C1][R3;C3][R4;C4]
-fitPiece(i1,R1,C1,R2,C2,R3,C3,R4,C4,M) :-
+fitPiece(i1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
     R1 = R2,
     R2 = R3,
     R3 = R4,
     eq(C2,C1,-1),
     eq(C3,C1,+1),
     eq(C4,C1,+2),
-    freeCell(R1,C1,M),
-    freeCell(R2,C2,M),
-    freeCell(R3,C3,M),	
-    freeCell(R4,C4,M).
+    freeCell(R1,C1,GbList),
+    freeCell(R2,C2,GbList),
+    freeCell(R3,C3,GbList),	
+    freeCell(R4,C4,GbList).
     
 %[ ]
 %[x]
@@ -315,17 +283,17 @@ fitPiece(i1,R1,C1,R2,C2,R3,C3,R4,C4,M) :-
 %[R1;C1]
 %[R3;C3]
 %[R4;C4]
-fitPiece(i2,R1,C1,R2,C2,R3,C3,R4,C4,M) :- 
+fitPiece(i2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     C1 = C2,
 	C2 = C3,
 	C3 = C4,
 	eq(R2,R1,-1),
 	eq(R3,R1,+1),
 	eq(R4,R1,+2),
-    freeCell(R1,C1,M),
-    freeCell(R2,C2,M),
-    freeCell(R3,C3,M),	
-    freeCell(R4,C4,M).
+    freeCell(R1,C1,GbList),
+    freeCell(R2,C2,GbList),
+    freeCell(R3,C3,GbList),	
+    freeCell(R4,C4,GbList).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %S Tetramino
@@ -334,17 +302,17 @@ fitPiece(i2,R1,C1,R2,C2,R3,C3,R4,C4,M) :-
 %       [R3;C3][R4;C4]
 %[R2;C2][R1;C1]
 
-fitPiece(s1,R1,C1,R2,C2,R3,C3,R4,C4,M) :- 
+fitPiece(s1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     C1 = C3,
     R1 = R2,
     R4 = R3,
 	eq(C2,C1,-1),
     eq(R3,R1,-1),
     eq(C4,C3,+1),
-    freeCell(R1,C1,M),
-    freeCell(R2,C2,M),
-    freeCell(R3,C3,M),	
-    freeCell(R4,C4,M).
+    freeCell(R1,C1,GbList),
+    freeCell(R2,C2,GbList),
+    freeCell(R3,C3,GbList),	
+    freeCell(R4,C4,GbList).
 
 
 %[ ]
@@ -354,17 +322,17 @@ fitPiece(s1,R1,C1,R2,C2,R3,C3,R4,C4,M) :-
 %[R3;C3][R1;C1]
 %       [R2;C2]
 
-fitPiece(s2,R1,C1,R2,C2,R3,C3,R4,C4,M) :- 
+fitPiece(s2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     C1 = C2,
     R1 = R3,
     C3 = C4,
 	eq(R2,R1,+1),
     eq(R4,R3,-1),
     eq(C3,C1,-1),
-    freeCell(R1,C1,M),
-    freeCell(R2,C2,M),
-    freeCell(R3,C3,M),	
-    freeCell(R4,C4,M).
+    freeCell(R1,C1,GbList),
+    freeCell(R2,C2,GbList),
+    freeCell(R3,C3,GbList),	
+    freeCell(R4,C4,GbList).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %Z Tetramino
@@ -373,17 +341,17 @@ fitPiece(s2,R1,C1,R2,C2,R3,C3,R4,C4,M) :-
 %   [x][ ]
 %[R4;C4][R3;C3]
 %       [R1;C1][R2;C2]
-fitPiece(z1,R1,C1,R2,C2,R3,C3,R4,C4,M) :- 
+fitPiece(z1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     C1 = C3,
     R1 = R2,
     R4 = R3,
     eq(C2,C1,+1),
     eq(R3,R1,-1),
     eq(C4,C3,-1),
-    freeCell(R1,C1,M),
-    freeCell(R2,C2,M),
-    freeCell(R3,C3,M),	
-    freeCell(R4,C4,M).
+    freeCell(R1,C1,GbList),
+    freeCell(R2,C2,GbList),
+    freeCell(R3,C3,GbList),	
+    freeCell(R4,C4,GbList).
 
 %   [ ]
 %[ ][x]
@@ -392,17 +360,17 @@ fitPiece(z1,R1,C1,R2,C2,R3,C3,R4,C4,M) :-
 %[R3;C3][R1;C1]
 %[R2;C2]
 
-fitPiece(z2,R1,C1,R2,C2,R3,C3,R4,C4,M) :- 
+fitPiece(z2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     C1 = C4,
     R1 = R3,
     C3 = C2,
 	eq(R2,R1,+1),
     eq(R4,R1,-1),
     eq(C3,C1,-1),
-    freeCell(R1,C1,M),
-    freeCell(R2,C2,M),
-    freeCell(R3,C3,M),	
-    freeCell(R4,C4,M).
+    freeCell(R1,C1,GbList),
+    freeCell(R2,C2,GbList),
+    freeCell(R3,C3,GbList),	
+    freeCell(R4,C4,GbList).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %T Tetramino
@@ -411,17 +379,17 @@ fitPiece(z2,R1,C1,R2,C2,R3,C3,R4,C4,M) :-
 %       [R3;C3]
 %[R2;C2][R1;C1][R4;C4]
 
-fitPiece(t1,R1,C1,R2,C2,R3,C3,R4,C4,M) :- 
+fitPiece(t1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     C1 = C3,
     R1 = R2,
     R1 = R4,
 	eq(C2,C1,-1),
     eq(R3,R1,-1),
     eq(C4,C1,+1),
-    freeCell(R1,C1,M),
-    freeCell(R2,C2,M),
-    freeCell(R3,C3,M),	
-    freeCell(R4,C4,M).
+    freeCell(R1,C1,GbList),
+    freeCell(R2,C2,GbList),
+    freeCell(R3,C3,GbList),	
+    freeCell(R4,C4,GbList).
 
 %   [ ]
 %   [x][ ]
@@ -429,17 +397,17 @@ fitPiece(t1,R1,C1,R2,C2,R3,C3,R4,C4,M) :-
 %   [R3;C3]
 %   [R1;C1][R4;C4]
 %   [R2;C2]
-fitPiece(t2,R1,C1,R2,C2,R3,C3,R4,C4,M) :- 
+fitPiece(t2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     C1 = C3,
     R1 = R4,
     C1 = C2,
 	eq(R2,R1,+1),
     eq(R3,R1,-1),
     eq(C4,C1,+1),
-    freeCell(R1,C1,M),
-    freeCell(R2,C2,M),
-    freeCell(R3,C3,M),	
-    freeCell(R4,C4,M).
+    freeCell(R1,C1,GbList),
+    freeCell(R2,C2,GbList),
+    freeCell(R3,C3,GbList),	
+    freeCell(R4,C4,GbList).
 
 %   
 %[ ][x][ ]
@@ -447,17 +415,17 @@ fitPiece(t2,R1,C1,R2,C2,R3,C3,R4,C4,M) :-
 %   
 %[R3;C3][R1;C1][R4;C4]
 %       [R2;C2]
-fitPiece(t3,R1,C1,R2,C2,R3,C3,R4,C4,M) :- 
+fitPiece(t3,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     R1 = R3,
     R1 = R4,
     C1 = C2,
 	eq(R2,R1,+1),
     eq(C3,C1,-1),
     eq(C4,C1,+1),
-    freeCell(R1,C1,M),
-    freeCell(R2,C2,M),
-    freeCell(R3,C3,M),	
-    freeCell(R4,C4,M).
+    freeCell(R1,C1,GbList),
+    freeCell(R2,C2,GbList),
+    freeCell(R3,C3,GbList),	
+    freeCell(R4,C4,GbList).
 
 %   [ ]
 %[ ][x]
@@ -465,17 +433,17 @@ fitPiece(t3,R1,C1,R2,C2,R3,C3,R4,C4,M) :-
 %       [R4;C4]
 %[R3;C3][R1;C1]
 %       [R2;C2]
-fitPiece(t4,R1,C1,R2,C2,R3,C3,R4,C4,M) :- 
+fitPiece(t4,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     R1 = R3,
     C1 = C2,
     C1 = C4,
 	eq(R2,R1,+1),
     eq(C3,C1,-1),
     eq(R4,R1,-1),
-    freeCell(R1,C1,M),
-    freeCell(R2,C2,M),
-    freeCell(R3,C3,M),	
-    freeCell(R4,C4,M).
+    freeCell(R1,C1,GbList),
+    freeCell(R2,C2,GbList),
+    freeCell(R3,C3,GbList),	
+    freeCell(R4,C4,GbList).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %J Tetramino
@@ -484,17 +452,17 @@ fitPiece(t4,R1,C1,R2,C2,R3,C3,R4,C4,M) :-
 %[R3;C3]
 %[R2;C2][R1;C1][R4;C4]
 
-fitPiece(j1,R1,C1,R2,C2,R3,C3,R4,C4,M) :- 
+fitPiece(j1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     R1 = R2,
     R1 = R4,
     C2 = C3,
 	eq(C2,C1,-1),
     eq(R3,R1,-1),
     eq(C4,C1,+1),
-    freeCell(R1,C1,M),
-    freeCell(R2,C2,M),
-    freeCell(R3,C3,M),	
-    freeCell(R4,C4,M).
+    freeCell(R1,C1,GbList),
+    freeCell(R2,C2,GbList),
+    freeCell(R3,C3,GbList),	
+    freeCell(R4,C4,GbList).
 
 %   [ ][ ]
 %   [x]
@@ -503,17 +471,17 @@ fitPiece(j1,R1,C1,R2,C2,R3,C3,R4,C4,M) :-
 %   [R1;C1]
 %   [R4;C4]
 
-fitPiece(j2,R1,C1,R2,C2,R3,C3,R4,C4,M) :- 
+fitPiece(j2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     C1 = C2,
     C1 = C4,
     R3 = R2,
 	eq(R2,R1,-1),
     eq(R4,R1,+1),
     eq(C3,C2,+1),
-    freeCell(R1,C1,M),
-    freeCell(R2,C2,M),
-    freeCell(R3,C3,M),	
-    freeCell(R4,C4,M).
+    freeCell(R1,C1,GbList),
+    freeCell(R2,C2,GbList),
+    freeCell(R3,C3,GbList),	
+    freeCell(R4,C4,GbList).
 
 %
 %[ ][x][ ]
@@ -521,17 +489,17 @@ fitPiece(j2,R1,C1,R2,C2,R3,C3,R4,C4,M) :-
 %[R2;C2][R1;C1][R3;C3]
 %              [R4;C4]
 
-fitPiece(j3,R1,C1,R2,C2,R3,C3,R4,C4,M) :- 
+fitPiece(j3,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     R2 = R1,
     R3 = R1,
     C3 = C4,
 	eq(C2,C1,-1),
     eq(C3,C1,+1),
     eq(R4,R3,+1),
-    freeCell(R1,C1,M),
-    freeCell(R2,C2,M),
-    freeCell(R3,C3,M),	
-    freeCell(R4,C4,M).
+    freeCell(R1,C1,GbList),
+    freeCell(R2,C2,GbList),
+    freeCell(R3,C3,GbList),	
+    freeCell(R4,C4,GbList).
 
 %   [ ]
 %   [x]
@@ -540,17 +508,17 @@ fitPiece(j3,R1,C1,R2,C2,R3,C3,R4,C4,M) :-
 %       [R1;C1]
 %[R4;C4][R3;C3]       
 
-fitPiece(j4,R1,C1,R2,C2,R3,C3,R4,C4,M) :- 
+fitPiece(j4,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     C2 = C1,
     C3 = C1,
     R4 = R3,
 	eq(R2,R1,-1),
     eq(R3,R1,+1),
     eq(C4,C3,-1),
-    freeCell(R1,C1,M),
-    freeCell(R2,C2,M),
-    freeCell(R3,C3,M),	
-    freeCell(R4,C4,M).
+    freeCell(R1,C1,GbList),
+    freeCell(R2,C2,GbList),
+    freeCell(R3,C3,GbList),	
+    freeCell(R4,C4,GbList).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %L Tetramino
@@ -559,17 +527,17 @@ fitPiece(j4,R1,C1,R2,C2,R3,C3,R4,C4,M) :-
 %              [R3;C3]
 %[R2;C2][R1;C1][R4;C4]
 
-fitPiece(l1,R1,C1,R2,C2,R3,C3,R4,C4,M) :- 
+fitPiece(l1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     R1 = R2,
     R1 = R4,
     C4 = C3,
 	eq(C2,C1,-1),
     eq(R3,R1,-1),
     eq(C4,C1,+1),
-    freeCell(R1,C1,M),
-    freeCell(R2,C2,M),
-    freeCell(R3,C3,M),	
-    freeCell(R4,C4,M).
+    freeCell(R1,C1,GbList),
+    freeCell(R2,C2,GbList),
+    freeCell(R3,C3,GbList),	
+    freeCell(R4,C4,GbList).
 
 %   [ ]
 %   [x]
@@ -578,17 +546,17 @@ fitPiece(l1,R1,C1,R2,C2,R3,C3,R4,C4,M) :-
 %   [R1;C1]
 %   [R3;C3][R4;C4]       
 
-fitPiece(l2,R1,C1,R2,C2,R3,C3,R4,C4,M) :- 
+fitPiece(l2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     C2 = C1,
     C3 = C1,
     R4 = R3,
 	eq(R2,R1,-1),
     eq(R3,R1,+1),
     eq(C4,C3,+1),
-    freeCell(R1,C1,M),
-    freeCell(R2,C2,M),
-    freeCell(R3,C3,M),	
-    freeCell(R4,C4,M).
+    freeCell(R1,C1,GbList),
+    freeCell(R2,C2,GbList),
+    freeCell(R3,C3,GbList),	
+    freeCell(R4,C4,GbList).
 
 %
 %[ ][x][ ]
@@ -596,17 +564,17 @@ fitPiece(l2,R1,C1,R2,C2,R3,C3,R4,C4,M) :-
 %[R2;C2][R1;C1][R4;C4]
 %[R3;C3]
 
-fitPiece(l3,R1,C1,R2,C2,R3,C3,R4,C4,M) :- 
+fitPiece(l3,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     R1 = R2,
     R1 = R4,
     C2 = C3,
 	eq(C2,C1,-1),
     eq(R3,R2,+1),
     eq(C4,C1,+1),
-    freeCell(R1,C1,M),
-    freeCell(R2,C2,M),
-    freeCell(R3,C3,M),	
-    freeCell(R4,C4,M).
+    freeCell(R1,C1,GbList),
+    freeCell(R2,C2,GbList),
+    freeCell(R3,C3,GbList),	
+    freeCell(R4,C4,GbList).
 
 %[ ][ ]
 %   [x]
@@ -615,72 +583,147 @@ fitPiece(l3,R1,C1,R2,C2,R3,C3,R4,C4,M) :-
 %       [R1;C1]
 %       [R3;C3]       
 
-fitPiece(l4,R1,C1,R2,C2,R3,C3,R4,C4,M) :- 
+fitPiece(l4,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     C2 = C1,
     C3 = C1,
     R4 = R2,
 	eq(R2,R1,-1),
     eq(R3,R1,+1),
     eq(C4,C2,-1),
-    freeCell(R1,C1,M),
-    freeCell(R2,C2,M),
-    freeCell(R3,C3,M),	
-    freeCell(R4,C4,M).
+    freeCell(R1,C1,GbList),
+    freeCell(R2,C2,GbList),
+    freeCell(R3,C3,GbList),	
+    freeCell(R4,C4,GbList).
 
 %Discover all the possible cell where a tetramino can be placed for all its rotations
-findPossibleGoals(T,List,M) :- 
+findPossibleGoals(T,List,GbList) :- 
     findall((T1), rotation(T, T1, _), Lr),
-    findPossibleGoals0([],Lr,List,M).
+    findPossibleGoals0([],Lr,List,GbList).
 
 findPossibleGoals0(Found,[],Found,_).
 
-findPossibleGoals0(Found,[Ht|T],L,M) :-
-    findall((Ht,R,C), tetraminoGoal(Ht,R,C,M), List),
+findPossibleGoals0(Found,[Ht|T],L,GbList) :-
+    bagof((Ht,R,C), tetraminoGoal(Ht,R,C,GbList), List),
     append(Found,List,NewList),
-    findPossibleGoals0(NewList,T,L,M).
+    findPossibleGoals0(NewList,T,L,GbList).
 
 %a tetramino can be placed on a free cell when the next row collide
-tetraminoGoal(T,R,C,M) :-
-    freeCell1(R,C,M),
-    fitPiece(T,R,C,_,_,_,_,_,_,M),
+tetraminoGoal(T,R,C,GbList) :-
+    freeCell1(R,C,GbList),
+    fitPiece(T,R,C,_,_,_,_,_,_,GbList),
     R1 is R + 1,
-    \+fitPiece(T,R1,C,_,_,_,_,_,_,M).
+    \+fitPiece(T,R1,C,_,_,_,_,_,_,GbList).
+
+%row shifter for computing new gameBoard
+
+cellToShift(R,C,R1,GbList) :-
+    occCellLG(R,C,GbList),
+    R<R1.
+
+shiftOccCell(_, [], []).
+
+shiftOccCell(N, [[R,C]|T], [[R1,C]|T2]) :-
+    R1 is R + N,
+    shiftOccCell(N, T, T2).
+
+shift([H|T],GbListOld,GbListNew):-
+    bagof(([R,C]), cellToShift(R, C, H, GbListOld), ElementToShift),
+    shiftOccCell(1, ElementToShift, ShiftedElements),
+    first_items(ElementToShift,RowsToShift),
+    sort(RowsToShift,SortedRowsToShift), 
+    removeRows(SortedRowsToShift,GbListOld,GbListOld1), 
+    append(ShiftedElements,GbListOld1,GbListOld2),
+    shift(T,GbListOld2,GbListNew).
+
+shift([],GbListNew,GbListNew).
+
+%Return the row number of the cleared row
+countOccCelInRow(R,N, GbList) :- 
+    setof((C),occCellLG(R,C,GbList),Occ),length(Occ,N).
+
+clearedRow(R, GbList) :-
+    countOccCelInRow(R,Occ, GbList),
+    gameBoardW(W),
+    Occ = W.
+%
+computeNewGameBoard(GbListOld,GbListNew) :-
+    setof((R),clearedRow(R,GbListOld),ClearedRows),
+    removeRows(ClearedRows,GbListOld,GbListMid),
+    shift(ClearedRows,GbListMid,GbListNew),
+    !.
+
+computeNewGameBoard(GbListOld,GbListOld).
+
+%Put the piece in the given reference point and then assert all the occupied cells.
+placePiece(T,R1,C1,LGbpre,LGbpost) :-
+    fitPiece(T,R1,C1,R2,C2,R3,C3,R4,C4,LGbpre),
+    L = [[R1,C1],[R2,C2],[R3,C3],[R4,C4]],
+    append(LGbpre,L,LGbpre1),
+    computeNewGameBoard(LGbpre1,LGbpost).
+%
 
 %%%%%%%%%%%%%%%%%%  
 
 
-computeNewGameBoard(Mmid,Mpost) :-
-    fullRow(FR),
-    setof(N,nth0(N,Mmid,FR),ListN),
-    length(ListN, NofDeleted),
-    NofDeleted > 0,
-    delete(Mmid,FR,Mdeleted),
-    emptyRow(ER),
-    createRow(NofDeleted,ER,EmptyRows),
-    append(EmptyRows,Mdeleted,Mpost).
+%%%%%%%%%%%%%%%%%%%%%%%%
+%Debugging Helper Rules%
+%%%%%%%%%%%%%%%%%%%%%%%%
+%write game board for debugging
+%call it using: ?- writeGameBoard.
 
-computeNewGameBoard(Mmid,Mmid).
+writeGameBoard :-
+	writeGameBoard(0,0).
 
-%Put the piece in the given reference point and then assert all the occupied cells.
-%In -LGb there is the list of occupied cells before the execution of the move.
-putAllCells([H|T],Mpre,Mmid):-
-    putAllCells([H|T],Mpre,Mpre,Mmid).
+writeGameBoard(R,C) :- 
+    gameBoardH(R),
+    nl,
+    write([--]),
+    writeColNumbers(C).
 
-putAllCells([],_, MmidTemp, MmidTemp).
+writeGameBoard(R,C) :- 
+    nl, 
+    writeRowNumber(R),
+    writeRow(R,C), 
+    R1 is R + 1, 
+    writeGameBoard(R1,C),
+    !.
 
-putAllCells([H|T],Mpre, MmidTemp, Mmid):-
-    nth0(0,H,I),
-    nth0(1,H,J),
-    replace_m_n(MmidTemp, I, J, [o], MmidTemp1),
-    putAllCells(T,Mpre, MmidTemp1, Mmid).
+writeRowNumber(R):-
+    R >= 10,
+    write([R]),
+    !.
 
-placePiece(T,R1,C1,Mpre,Mpost) :-
-    fitPiece(T,R1,C1,R2,C2,R3,C3,R4,C4,Mpre),
-    L = [[R1,C1],[R2,C2],[R3,C3],[R4,C4]],
-    putAllCells(L,Mpre,Mpost).
-    %computeNewGameBoard(Mmid,Mpost).
-%
-/*
+writeRowNumber(R):-
+    write('['),
+    write(0),
+    write(R),
+    write(']'),
+    !.
+
+writeRow(_,C) :- 
+    gameBoardW(C).
+
+writeRow(R,C) :- 
+    occCell(R,C), 
+    write([■]), 
+    C1 is C + 1, 
+    writeRow(R,C1),
+    !.
+
+writeRow(R,C) :- 
+    write([□]),
+    C1 is C + 1,
+    writeRow(R,C1),
+    !.
+
+writeColNumbers(C) :- 
+    gameBoardW(C).
+
+writeColNumbers(C) :- 
+    write([C]), 
+    C1 is C + 1, 
+    writeColNumbers(C1),
+    !.
 
 %///////////////////
 
@@ -691,65 +734,44 @@ placePiece(T,R1,C1,Mpre,Mpost) :-
 %1) Compute the number of holes in the columns.
 %This algorithm consider as holes all the empty cell below an occupied cell of a certain column.
 %The holes are often the result of a bad move, so the goal is to choose a move that minimize this number.
-holesInColumn(N) :- 
-    setof((R,C),holesColumn(R,C),HolesColumn),
+holesInColumn(N,GbL) :- 
+    setof((R,C,GbL),holesColumn(R,C,GbL),HolesColumn),
     length(HolesColumn,N),
     !.
 
-holesInColumn(0).
+holesInColumn(0,_).
 
-holesColumn(R1,C) :-
+holesColumn(R1,C,GbL) :-
     gameBoardW(W),
     gen(0, W, C),
-    occCell(R,C),
-    freeCell1(R1,C),
+    occCellL(R,C,GbL),
+    freeCell1(R1,C,GbL),
     R1 > R.
 
 %
 
-nonContinuosSpaceInRows(N) :-
-    setof((R,C),nonContinuosSpaceInRows(R,C),NCSIR),
+nonContinuosSpaceInRows(N,GbL) :-
+    setof((R,C,GbL),nonContinuosSpaceInRows(R,C,GbL),NCSIR),
     length(NCSIR,N),
     !.
 
-nonContinuosSpaceInRows(0).
+nonContinuosSpaceInRows(0,_).
 
-nonContinuosSpaceInRows(R,C) :-
+nonContinuosSpaceInRows(R,C,GbL) :-
     gameBoardH(H),
     gen(0, H, R),
-    freeCell1(R,C),
-    occCell(R,C1),
+    freeCell1(R,C,GbL),
+    occCellL(R,C1,GbL),
     (C1 > C; C1 < C).
-
-
-
-%2) Compute the number of holes in the rows.
-%This algorithm consider as holes all the empty cell netx to an occupied cell of a certain row.
-%The holes are often the result of a bad move, so the goal is to choose a move that minimize this number.
-holesInRow(N) :- 
-    setof((R,C),holesRow(R,C),HolesRow),
-    length(HolesRow,N),
-    !.
-
-holesInRow(0).
-
-holesRow(R,C1) :-
-    gameBoardH(H),
-    gen(0, H, R),
-    occCell(R,C),
-    freeCell1(R,C1),
-    C1 > C.
 
 %
 
 %3) Compute the etropy of each row, then give average value as measure of the "entropy" of the gameboard.
 %Count the occupied cell of a row.
-countOccCelInRow(R,N) :- 
-    setof((C),occCell(R,C),Occ),length(Occ,N).
 
 %Compute the entropy of a row.
-entropyOfRow(R,Ent) :-
-    countOccCelInRow(R,Occ),
+entropyOfRow(R,Ent,GbL) :-
+    countOccCelInRow(R,Occ,GbL),
     gameBoardW(W),
     Free is W - Occ,
     OccRatio is Occ/W,
@@ -758,58 +780,37 @@ entropyOfRow(R,Ent) :-
     logBase2(FreeRatio,Log2FreeRatio),
     Ent is -OccRatio*Log2OccRatio -FreeRatio*Log2FreeRatio.
 
-entropyOfRow(_, 0).
+entropyOfRow(_,0,_).
 
-avgEntropyOfGameBoard(AvgEnt) :-
-    findall((Ent),entropyOfRow(_,Ent),EntropyXRow), 
+avgEntropyOfGameBoard(AvgEnt,GbL) :-
+    findall((Ent),entropyOfRow(_,Ent,GbL),EntropyXRow), 
     sum_list(EntropyXRow,Sum),
     AvgEnt is Sum.
-
-
-
-%
-
-%4) Return the number of the cleared row, this in order to give advantage to the move that actually clear some row.
-
-clearedRow(R) :-
-    countOccCelInRow(R,Occ),
-    gameBoardW(W),
-    Occ = W.
-
-numberOfclearedRow(N) :- 
-    setof((R),clearedRow(R),ClearedRow),
-    length(ClearedRow,N),
-    !.
-
-numberOfclearedRow(0).
 %
 
 %Compute the whole GameBoard score
-gameBoardScore(S) :-
-    holesInColumn(HC),
-    nonContinuosSpaceInRows(NCSIR),
-    avgEntropyOfGameBoard(AvgEnt),
+gameBoardScore(S,GbL) :-
+    holesInColumn(HC,GbL),
+    nonContinuosSpaceInRows(NCSIR,GbL),
+    avgEntropyOfGameBoard(AvgEnt,GbL),
     S1 is AvgEnt*10+HC+NCSIR,
     S is -1*S1.  
 
-scoreMoves([],M,M).
-
-scoreMoves([(T,R,C)|Tail],M,ScoreList) :-
-    placePiece(T,R,C,L,_),
-    gameBoardScore(S),
-    retractall(occCell(_,_)),
-    assertList(L),
-    append(M,[[S,(T,R,C)]],M1),
-    scoreMoves(Tail,M1,ScoreList).  
-
 %Compute the evalution for each available move and put them in an array
-findMoves(T,ScoreList) :-
-    findMoves(T,[],ScoreListUnsort),
+findMoves(T,ScoreList,GbL) :-
+    findPossibleGoals(T,L,GbL),
+    write(L),
+    scoreMoves(L,ScoreListUnsort,GbL),
     sort(1, @>=, ScoreListUnsort, ScoreList).
-    
-findMoves(T,M,ScoreList) :-
-	findPossibleGoals(T,L),
-    scoreMoves(L,M,ScoreList).
+
+scoreMoves([],[],_).
+
+scoreMoves([(T,R,C)|Tail],[[S,(T,R,C)]|Tail2],GbLPre) :-
+    placePiece(T,R,C,GbLPre,GbLPost),
+    gameBoardScore(S,GbLPost),
+    scoreMoves(Tail,Tail2,GbLPre).  
+
+/*
 %////////////////////////////////////////    
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -899,66 +900,8 @@ serchPath(Start, Goal, Plan) :-
     setof(A, action(A), Actions),
     Heuristic=evaluateMovement, 
     planner(Start, Goal, Actions, Heuristic, Plan).
-*/
-%%%%%%%%%%%%%%%%%%%%%%%%
-%Debugging Helper Rules%
-%%%%%%%%%%%%%%%%%%%%%%%%
-%write game board for debugging
-%call it using: ?- writeGameBoard.
 
-writeGameBoard :-
-	writeGameBoard(0,0).
 
-writeGameBoard(R,C) :- 
-    gameBoardH(R),
-    nl,
-    write([--]),
-    writeColNumbers(C).
-
-writeGameBoard(R,C) :- 
-    nl, 
-    writeRowNumber(R),
-    writeRow(R,C), 
-    R1 is R + 1, 
-    writeGameBoard(R1,C),
-    !.
-
-writeRowNumber(R):-
-    R >= 10,
-    write([R]),
-    !.
-
-writeRowNumber(R):-
-    write('['),
-    write(0),
-    write(R),
-    write(']'),
-    !.
-
-writeRow(_,C) :- 
-    gameBoardW(C).
-
-writeRow(R,C) :- 
-    occCell(R,C), 
-    write([■]), 
-    C1 is C + 1, 
-    writeRow(R,C1),
-    !.
-
-writeRow(R,C) :- 
-    write([□]),
-    C1 is C + 1,
-    writeRow(R,C1),
-    !.
-
-writeColNumbers(C) :- 
-    gameBoardW(C).
-
-writeColNumbers(C) :- 
-    write([C]), 
-    C1 is C + 1, 
-    writeColNumbers(C1),
-    !.
 %///////////////////////
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
