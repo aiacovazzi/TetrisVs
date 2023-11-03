@@ -37,7 +37,7 @@ export default class MapperAI {
     getSolution(gB) {
         gB.aiMoves = [];
         this.#assertOccupiedCell(gB);
-        this.#assertTetraminos(gB);
+        //this.#assertTetraminos(gB);
         this.#getPath(gB);
     }
     reset(){

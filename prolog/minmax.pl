@@ -34,15 +34,11 @@ minmax1(NextNodes, CurrentNode, NextNodesGenerator, Heuristic, Level, Depth, Alp
     nth1(1,SortedEvaluatedNodes,BestNode),
     getBest(Level,CurrentNode,BestNode,CurrentNodeEvaluated).
 
-iterativeEval(NextNodes, NextNodesGenerator, Heuristic, Level, Depth, Alpha, Beta, EvaluatedNodes,Player):-
-    iterativeEval1(NextNodes, NextNodesGenerator, Heuristic, Level, Depth, Alpha, Beta, [], EvaluatedNodes, Player).
-
-iterativeEval1([CurrentNode|NextNodes], NextNodesGenerator, Heuristic, Level, Depth, Alpha, Beta, TempEvaluatedNodes, EvaluatedNodes, Player):-
+iterativeEval([CurrentNode|NextNodes], NextNodesGenerator, Heuristic, Level, Depth, Alpha, Beta, [CurrentNodeEvaluated|NextNodes2], Player):-
     minmax(CurrentNode, NextNodesGenerator, Heuristic, Level, Depth, Alpha, Beta, CurrentNodeEvaluated, Player),
-    append(TempEvaluatedNodes,[CurrentNodeEvaluated],TempEvaluatedNodes1),
-    iterativeEval1(NextNodes, NextNodesGenerator, Heuristic, Level, Depth, Alpha, Beta, TempEvaluatedNodes1, EvaluatedNodes, Player).
+    iterativeEval(NextNodes, NextNodesGenerator, Heuristic, Level, Depth, Alpha, Beta, NextNodes2, Player).
 
-iterativeEval1([], _, _, _, _, _, _, TempEvaluatedNodes, TempEvaluatedNodes, _).
+iterativeEval([], _, _, _, _, _, _, [], _).
 
 %If the level is > 0 then I bind the best score to CurrentNode, elsewhere i give as result the best successor node.
 getBest(0,_,BestNode,BestNode) :- !.
