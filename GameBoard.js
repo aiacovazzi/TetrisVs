@@ -64,6 +64,8 @@ export default class GameBoard {
     #readMoves = false;
     aiMoves = [];
     tetraminoPositionsMatrix = [];
+    currentAndNextTetramino = [];
+    gameMode = "SinglePlayer";
 
     //all the keyCode here: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/keyCode
     #keydownP1 = event => {
@@ -114,13 +116,14 @@ export default class GameBoard {
         //assign the proper event listener for human player
         if (this.playerOne == 'Player') {
             document.addEventListener("keydown", this.#keydownP1);
-        } else if (this.playerOne == 'AI') {
-            this.#aiEnabled = true;
         }
 
         if (this.playerTwo == 'Player') {
             document.addEventListener("keydown", this.#keydownP2);
-        } else if (this.playerTwo == 'AI') {
+        } 
+
+        //enable AI
+        if (this.playerOne == 'AI' || this.playerTwo == 'AI') {
             this.#aiEnabled = true;
         }
 
@@ -130,10 +133,17 @@ export default class GameBoard {
 
         document.addEventListener("keydown", this.#keydownPause);
 
-        this.#p1NextTetromino = new Tetromino();
-        this.#p2NextTetromino = new Tetromino();
-        this.p1NextTetrominoIndex = this.#p1NextTetromino.color;
-        this.p2NextTetrominoIndex = this.#p2NextTetromino.color;
+        if (this.playerOne != 'None') {
+            this.#p1NextTetromino = new Tetromino();
+            this.p1NextTetrominoIndex = this.#p1NextTetromino.color;
+        }
+
+        if (this.playerTwo != 'None') {
+            this.#p2NextTetromino = new Tetromino();
+            this.p2NextTetrominoIndex = this.#p2NextTetromino.color;
+            this.gameMode = "SinglePlayer";
+        }
+        
         this.#setIntervalMovement(this.#intervalMs);
         this.#levelInterval = setInterval(function () { if (!mov.pause) { mov.#nextSec() } }, 1000);
     }
@@ -154,11 +164,12 @@ export default class GameBoard {
                         this.turn = true;
                     }
                     this.#assignNextTetromino(this.turn);
+                    this.#prepareTetraminosArray(this.turn);
                     this.gameOver = !(this.#checkCollision());
                     //this.pause = true;
                     if (this.#aiEnabled && !this.gameOver) {
                         this.#aiMapper.getSolution(this);
-                        
+
                     }
                 } else {
                     //then allows for player movement
@@ -217,6 +228,20 @@ export default class GameBoard {
             this.#p2NextTetromino = new Tetromino();
             this.p2NextTetrominoIndex = this.#p2NextTetromino.color;
         }
+    }
+
+    #prepareTetraminosArray(turn) {
+        //single player
+        if (this.playerTwo == 'None') {
+            this.currentAndNextTetramino = [this.tetromino.color, this.#p1NextTetromino.color];
+        } else {
+            if (turn) {
+                this.currentAndNextTetramino = [this.tetromino.color, this.#p2NextTetromino.color, this.#p1NextTetromino.color];
+            } else {
+                this.currentAndNextTetramino = [this.tetromino.color, this.#p1NextTetromino.color, this.#p2NextTetromino.color];
+            }
+        }
+        console.log(this.currentAndNextTetramino);
     }
 
     #rotate() {
@@ -401,7 +426,7 @@ export default class GameBoard {
             if (this.aiMoves.length) {
                 const move = this.aiMoves[0];
                 //console.log(this.aiMoves);
-                
+
                 this.aiMoves.shift();
                 switch (move) {
                     case 'rotate':
@@ -422,8 +447,8 @@ export default class GameBoard {
                 //adding down commit the position and force the next tetromino to appear
                 this.#p1Down = true;
                 this.#readMoves = false;
-            }            
+            }
         }
-        
+
     }
 }

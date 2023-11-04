@@ -27,18 +27,19 @@ minmax1(NextNodes, CurrentNode, NextNodesGenerator, Heuristic, Level, Depth, Alp
     %call the minmax for each node in NextNodes and collect evaluation for each node for the next player and level+1
     Level1 is Level + 1,
     nextplayer(Player,NextPlayer),
-    iterativeEval(NextNodes, NextNodesGenerator, Heuristic, Level1, Depth, Alpha, Beta, EvaluatedNodes, NextPlayer),
+    iterativeEval(NextNodes, EvaluatedNodes, NextNodesGenerator, Heuristic, Level1, Depth, Alpha, Beta, NextPlayer),
     %BestNode is the best one according to the operator related to the player
     operator(Player,Operator),
     sort(1, Operator, EvaluatedNodes, SortedEvaluatedNodes),
     nth1(1,SortedEvaluatedNodes,BestNode),
     getBest(Level,CurrentNode,BestNode,CurrentNodeEvaluated).
 
-iterativeEval([CurrentNode|NextNodes], NextNodesGenerator, Heuristic, Level, Depth, Alpha, Beta, [CurrentNodeEvaluated|NextNodes2], Player):-
+iterativeEval([CurrentNode|NextNodes], [CurrentNodeEvaluated|NextNodes2], NextNodesGenerator, Heuristic, Level, Depth, Alpha, Beta, Player):-
     minmax(CurrentNode, NextNodesGenerator, Heuristic, Level, Depth, Alpha, Beta, CurrentNodeEvaluated, Player),
-    iterativeEval(NextNodes, NextNodesGenerator, Heuristic, Level, Depth, Alpha, Beta, NextNodes2, Player).
+    updateAlphaBeta(Player,CurrentNodeEvaluated,Alpha,Beta,NextNodes,Alpha1,Beta1,NextNodes1),
+    iterativeEval(NextNodes1, NextNodes2, NextNodesGenerator, Heuristic, Level, Depth, Alpha1, Beta1, Player).
 
-iterativeEval([], _, _, _, _, _, _, [], _).
+iterativeEval([], [], _, _, _, _, _, _, _).
 
 %If the level is > 0 then I bind the best score to CurrentNode, elsewhere i give as result the best successor node.
 getBest(0,_,BestNode,BestNode) :- !.
@@ -50,3 +51,23 @@ getBest(_,CurrentNode,BestNode,CurrentNodeEvaluated) :-
 
 evaluate(Heuristic,CurrentNode,CurrentNodeEvaluated) :-
     call(Heuristic,CurrentNode,CurrentNodeEvaluated).
+
+%AlphBeta pruning disabled for maxmax mode
+updateAlphaBeta(maxmax,_,Alpha,Beta,NextNodes,Alpha,Beta,NextNodes).
+
+updateAlphaBeta(max,[Eval,_,_,_],Alpha,Beta,NextNodes,Alpha1,Beta1,NextNodes1) :-
+    Alpha1 is max(Eval,Alpha),
+    Beta1 = Beta,
+    pruneNextNodes(Alpha1,Beta1,NextNodes,NextNodes1).
+
+updateAlphaBeta(min,[Eval,_,_,_],Alpha,Beta,NextNodes,Alpha1,Beta1,NextNodes1) :-
+    Beta1 is min(Eval,Beta),
+    Alpha1 = Alpha,
+    pruneNextNodes(Alpha1,Beta1,NextNodes,NextNodes1).
+
+pruneNextNodes(Alpha1,Beta1,_,NextNodes1) :-
+    Beta1 =< Alpha1,
+    NextNodes1 = [],
+    !.
+
+pruneNextNodes(_,_,NextNodes,NextNodes).

@@ -24,20 +24,24 @@ export default class MapperAI {
     }
 
     #assertTetraminos(gB) {
-        var tetromino = this.#possibleShape[gB.tetromino.indexPiece] + '1/1/5';
-        this.#callApi('start/' + tetromino, 'GET', null);
+        this.#callApi('resetstart', 'GET', null);
+        var apiPath;
+        for (let i = 0; i < gB.currentAndNextTetramino.length; i++) {
+            apiPath = 'start/' + this.#possibleShape[gB.currentAndNextTetramino[i]-1];
+            console.log(apiPath);
+            this.#callApi(apiPath, 'GET', null);
+            }
     }
 
     #getPath(gB) {
-        const tetromino = this.#possibleShape[gB.tetromino.indexPiece]
-        const data = this.#callApi('path/' + tetromino, 'GET', null);
+        const data = this.#callApi('path/maxmax', 'GET', null);
         gB.aiMoves = JSON.parse(data);
     }
 
     getSolution(gB) {
         gB.aiMoves = [];
         this.#assertOccupiedCell(gB);
-        //this.#assertTetraminos(gB);
+        this.#assertTetraminos(gB);
         this.#getPath(gB);
     }
     reset(){

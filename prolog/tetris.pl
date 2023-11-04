@@ -1,89 +1,27 @@
-/*
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-To do (29/10):
--assert next move
--implementazione minmax/maxmax per la ricerca della miglior mossa in multi e single player.
-
+:- module(tetris, [getPathOfBestMove/2,writeGameBoard/0,computeNewGameBoard/0,occCell/2,callMinMax/2,start/1,tetraminos/1,nextNodes/3,evaluateNode/2,evaluateMovement/2,rotate/2,left/2,right/2,down/2]).
+/*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 To do (5/11):
--modularizzare codice
--implementare il logger che spieghi le mosse
-    prende la catena di valutazione delle mosse e ne siega la ratio
+
+-test AI SOLO e VS + adeguamento tetrisJs
+-debug computeNewGameBoard?
+-ottimizzare (o cambiare) euristica + algoritmo genetico per pesi euristica di valutazione??
+
+Problemi noti:
+-il lookahead potrebbe generare mosse irragiungibili.
+Soluzioni:
+    1)prevalutazione mossa usando il pathfinder (lento).
+    2)restituire in output non la mossa migliore ma la lista delle mosse di tutti i nodi successori alla radice ordinati.
+      in questo modo eventuli mosse irragiungibili possono essere "segnalate" dal pathfinder e scartate, per passare alla successiva.
+      mi aspetto non sia un caso frequente e di basso impatto sulle perfomance.
 
 Bonus:
+-impossible tetris
+-implementare il logger che spieghi le mosse
 -implementazione delle sessioni
-- algoritmo genetico per pesi euristica di valutazione??
 */
-
 :- use_module(library(lists)).
 :- use_module(planner).
 :- use_module(minmax).
-
-:- use_module(library(http/http_server)).
-:- use_module(library(http/http_session)).
-:- use_module(library(http/http_cors)).
-:- use_module(library(http/http_json)).
-:- use_module(library(http/http_dispatch)).
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%Web Server Interface Config%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-:- set_setting(http:cors, [*]).
-:- http_server(http_dispatch, [port(7777)]).
-
-%the root is for debugging printing the current GameBoard.
-:- http_handler(root(home), writeGB, []).
-
-writeGB(_Request) :-
-    format('Content-type: text/plain~n~n'),
-    writeGameBoard.
-
-%ocell/R/C (assert an occupied cell)
-:- http_handler(root(ocell/R/C), reqOccCell(R,C), []).
-
-reqOccCell(R,C,_Request) :-
-    cors_enable,
-    atom_number(R, R1),
-    atom_number(C, C1),
-    assertz(occCell(R1,C1)),
-    reply_json_dict('ok').
-
-%retcell(retract all the occupied cell)
-:- http_handler(root(retcell), retractCell, []).
-
-retractCell(_Request) :-
-    cors_enable,
-    retractall(occCell(_,_)),
-    reply_json_dict('ok').
-
-%newgb(compute a new gb after row cleaning)
-:- http_handler(root(newgb), newGb, []).
-
-newGb(_Request) :-
-    cors_enable,
-    computeNewGameBoard,
-    reply_json_dict('ok').
-
-%start/T/R/C (assert the starting tetramin0)
-:- http_handler(root(start/T/R/C), reqStart(T,R,C), []).
-
-reqStart(T,R,C,_Request) :-
-    cors_enable,
-    retractall(start(_)),
-    string_to_atom(T,T1),
-    atom_number(R, R1),
-    atom_number(C, C1),
-    assertz(start((T1,R1,C1))),
-    reply_json_dict('ok').
-
-%path find the best path for the tetramino
-:- http_handler(root(path/T), path(T), []).
-
-path(T,_Request) :-
-    cors_enable,
-    getPathOfBestMove(T,Plan),
-    reply_json_dict(Plan).
 %
 %//////////////////////////////////////////////////////////
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -93,8 +31,14 @@ gameBoardW(10).
 gameBoardH(20).
 :-dynamic(occCell/2).
 %the starting position of the playing tetramino
-%tetramino(T,R,C).
-:-dynamic(start/1).
+
+:-dynamic(tetraminos/1).
+
+start(T):-
+tetraminos(TList),
+append(TList,[T],TList2),
+retract(tetraminos(TList)),
+assert(tetraminos(TList2)).
 
 /*
 occCell(R,C) :-
@@ -104,7 +48,6 @@ occCell(R,C) :-
 %%%%%%%%%%%%%%%%%
 %Auxiliary rules%
 %%%%%%%%%%%%%%%%%
-
 %solve equations in the form
 % X = Y + Z
 %wrt the unknow value
@@ -147,11 +90,10 @@ gen(Cur, Top, Next):-
 createGameBoardList(GbList) :-
     setof(([R,C]),occCell(R,C),GbList),!.
 
-createGameBoardList([]).
-	
+createGameBoardList([]).	
 %
 
-%remove all the rows in the firt list indexed by rownumber
+%remove all the rows in the list indexed by rownumber
 removeRows([],GbListNew,GbListNew).
 
 removeRows([R|T],GbListOld,GbListNew) :-
@@ -167,7 +109,7 @@ first_items([[H|_]|T], [H|T2]) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Tetraminos' operators and checks%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
+%Convert a generic tetramino in its starting shape
 firstShape(o,o1).
 firstShape(i, i1).
 firstShape(s, s1).
@@ -198,68 +140,6 @@ rotation(j, j2, j3).
 rotation(j, j3, j4).
 rotation(j, j4, j1).
 
-%%%%%%%%%%%%%%%%%%%%%%%%
-%Debugging Helper Rules%
-%%%%%%%%%%%%%%%%%%%%%%%%
-%write game board for debugging
-%call it using: ?- writeGameBoard.
-
-writeGameBoard :-
-	writeGameBoard(0,0).
-
-writeGameBoard(R,C) :- 
-    gameBoardH(R),
-    nl,
-    write([--]),
-    writeColNumbers(C).
-
-writeGameBoard(R,C) :- 
-    nl, 
-    writeRowNumber(R),
-    writeRow(R,C), 
-    R1 is R + 1, 
-    writeGameBoard(R1,C),
-    !.
-
-writeRowNumber(R):-
-    R >= 10,
-    write([R]),
-    !.
-
-writeRowNumber(R):-
-    write('['),
-    write(0),
-    write(R),
-    write(']'),
-    !.
-
-writeRow(_,C) :- 
-    gameBoardW(C).
-
-writeRow(R,C) :- 
-    occCell(R,C), 
-    write([■]), 
-    C1 is C + 1, 
-    writeRow(R,C1),
-    !.
-
-writeRow(R,C) :- 
-    write([□]),
-    C1 is C + 1,
-    writeRow(R,C1),
-    !.
-
-writeColNumbers(C) :- 
-    gameBoardW(C).
-
-writeColNumbers(C) :- 
-    write([C]), 
-    C1 is C + 1, 
-    writeColNumbers(C1),
-    !.
-
-%///////////////////
-
 %Check if a cell is occupied in the list
 occCellL(R,C,GbList) :-
     memberchk([R,C],GbList).
@@ -284,14 +164,24 @@ freeCell1(R,C,GbList) :-
     gen(0, W, C),    
     \+occCellL(R,C,GbList).
 
+%check if there is space for a tetramin expressed in term of 4 cells.
+fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
+    freeCell(R1,C1,GbList),
+    freeCell(R2,C2,GbList),
+    freeCell(R3,C3,GbList),
+    freeCell(R4,C4,GbList).
+
+%%%%%%%%%%%%%%%%%%%%%%%
+%Tetraminos Definition%
+%%%%%%%%%%%%%%%%%%%%%%%
 %Check if there is space for an a tetromino on the gameboard given the reference point.
 %R1;C1 is the reference point.
+
 %O Tetramino
 %[ ][ ]
 %[ ][x]
 %[R4;C4][R2;C2]
 %[R3;C3][R1;C1]
-
 fitPiece(o1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     C2 = C1,    
     R3 = R1,    
@@ -299,10 +189,7 @@ fitPiece(o1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
     C4 = C3,
     eq(C3,C1,-1),
     eq(R2,R1,-1),
-    freeCell(R1,C1,GbList),
-    freeCell(R2,C2,GbList),
-    freeCell(R3,C3,GbList),
-    freeCell(R4,C4,GbList).
+    fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %I Tetramino
@@ -315,10 +202,7 @@ fitPiece(i1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
     eq(C2,C1,-1),
     eq(C3,C1,+1),
     eq(C4,C1,+2),
-    freeCell(R1,C1,GbList),
-    freeCell(R2,C2,GbList),
-    freeCell(R3,C3,GbList),	
-    freeCell(R4,C4,GbList).
+    fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
     
 %[ ]
 %[x]
@@ -335,10 +219,7 @@ fitPiece(i2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 	eq(R2,R1,-1),
 	eq(R3,R1,+1),
 	eq(R4,R1,+2),
-    freeCell(R1,C1,GbList),
-    freeCell(R2,C2,GbList),
-    freeCell(R3,C3,GbList),	
-    freeCell(R4,C4,GbList).
+    fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %S Tetramino
@@ -346,7 +227,6 @@ fitPiece(i2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 %[ ][x]
 %       [R3;C3][R4;C4]
 %[R2;C2][R1;C1]
-
 fitPiece(s1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     C1 = C3,
     R1 = R2,
@@ -354,10 +234,7 @@ fitPiece(s1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 	eq(C2,C1,-1),
     eq(R3,R1,-1),
     eq(C4,C3,+1),
-    freeCell(R1,C1,GbList),
-    freeCell(R2,C2,GbList),
-    freeCell(R3,C3,GbList),	
-    freeCell(R4,C4,GbList).
+    fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 
 
 %[ ]
@@ -366,7 +243,6 @@ fitPiece(s1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 %[R4;C4]
 %[R3;C3][R1;C1]
 %       [R2;C2]
-
 fitPiece(s2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     C1 = C2,
     R1 = R3,
@@ -374,10 +250,7 @@ fitPiece(s2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 	eq(R2,R1,+1),
     eq(R4,R3,-1),
     eq(C3,C1,-1),
-    freeCell(R1,C1,GbList),
-    freeCell(R2,C2,GbList),
-    freeCell(R3,C3,GbList),	
-    freeCell(R4,C4,GbList).
+    fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %Z Tetramino
@@ -393,10 +266,7 @@ fitPiece(z1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
     eq(C2,C1,+1),
     eq(R3,R1,-1),
     eq(C4,C3,-1),
-    freeCell(R1,C1,GbList),
-    freeCell(R2,C2,GbList),
-    freeCell(R3,C3,GbList),	
-    freeCell(R4,C4,GbList).
+    fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 
 %   [ ]
 %[ ][x]
@@ -404,7 +274,6 @@ fitPiece(z1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 %       [R4;C4]
 %[R3;C3][R1;C1]
 %[R2;C2]
-
 fitPiece(z2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     C1 = C4,
     R1 = R3,
@@ -412,10 +281,7 @@ fitPiece(z2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 	eq(R2,R1,+1),
     eq(R4,R1,-1),
     eq(C3,C1,-1),
-    freeCell(R1,C1,GbList),
-    freeCell(R2,C2,GbList),
-    freeCell(R3,C3,GbList),	
-    freeCell(R4,C4,GbList).
+    fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %T Tetramino
@@ -423,7 +289,6 @@ fitPiece(z2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 %[ ][x][ ]
 %       [R3;C3]
 %[R2;C2][R1;C1][R4;C4]
-
 fitPiece(t1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     C1 = C3,
     R1 = R2,
@@ -431,10 +296,7 @@ fitPiece(t1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 	eq(C2,C1,-1),
     eq(R3,R1,-1),
     eq(C4,C1,+1),
-    freeCell(R1,C1,GbList),
-    freeCell(R2,C2,GbList),
-    freeCell(R3,C3,GbList),	
-    freeCell(R4,C4,GbList).
+    fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 
 %   [ ]
 %   [x][ ]
@@ -449,10 +311,7 @@ fitPiece(t2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 	eq(R2,R1,+1),
     eq(R3,R1,-1),
     eq(C4,C1,+1),
-    freeCell(R1,C1,GbList),
-    freeCell(R2,C2,GbList),
-    freeCell(R3,C3,GbList),	
-    freeCell(R4,C4,GbList).
+    fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 
 %   
 %[ ][x][ ]
@@ -467,10 +326,7 @@ fitPiece(t3,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 	eq(R2,R1,+1),
     eq(C3,C1,-1),
     eq(C4,C1,+1),
-    freeCell(R1,C1,GbList),
-    freeCell(R2,C2,GbList),
-    freeCell(R3,C3,GbList),	
-    freeCell(R4,C4,GbList).
+    fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 
 %   [ ]
 %[ ][x]
@@ -485,10 +341,7 @@ fitPiece(t4,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 	eq(R2,R1,+1),
     eq(C3,C1,-1),
     eq(R4,R1,-1),
-    freeCell(R1,C1,GbList),
-    freeCell(R2,C2,GbList),
-    freeCell(R3,C3,GbList),	
-    freeCell(R4,C4,GbList).
+    fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %J Tetramino
@@ -496,7 +349,6 @@ fitPiece(t4,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 %[ ][x][ ]
 %[R3;C3]
 %[R2;C2][R1;C1][R4;C4]
-
 fitPiece(j1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     R1 = R2,
     R1 = R4,
@@ -504,10 +356,7 @@ fitPiece(j1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 	eq(C2,C1,-1),
     eq(R3,R1,-1),
     eq(C4,C1,+1),
-    freeCell(R1,C1,GbList),
-    freeCell(R2,C2,GbList),
-    freeCell(R3,C3,GbList),	
-    freeCell(R4,C4,GbList).
+    fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 
 %   [ ][ ]
 %   [x]
@@ -515,7 +364,6 @@ fitPiece(j1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 %   [R2;C2][R3;C3]
 %   [R1;C1]
 %   [R4;C4]
-
 fitPiece(j2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     C1 = C2,
     C1 = C4,
@@ -523,17 +371,13 @@ fitPiece(j2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 	eq(R2,R1,-1),
     eq(R4,R1,+1),
     eq(C3,C2,+1),
-    freeCell(R1,C1,GbList),
-    freeCell(R2,C2,GbList),
-    freeCell(R3,C3,GbList),	
-    freeCell(R4,C4,GbList).
+    fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 
 %
 %[ ][x][ ]
 %      [ ]
 %[R2;C2][R1;C1][R3;C3]
 %              [R4;C4]
-
 fitPiece(j3,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     R2 = R1,
     R3 = R1,
@@ -541,10 +385,7 @@ fitPiece(j3,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 	eq(C2,C1,-1),
     eq(C3,C1,+1),
     eq(R4,R3,+1),
-    freeCell(R1,C1,GbList),
-    freeCell(R2,C2,GbList),
-    freeCell(R3,C3,GbList),	
-    freeCell(R4,C4,GbList).
+    fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 
 %   [ ]
 %   [x]
@@ -552,7 +393,6 @@ fitPiece(j3,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 %       [R2;C2]
 %       [R1;C1]
 %[R4;C4][R3;C3]       
-
 fitPiece(j4,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     C2 = C1,
     C3 = C1,
@@ -560,10 +400,7 @@ fitPiece(j4,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 	eq(R2,R1,-1),
     eq(R3,R1,+1),
     eq(C4,C3,-1),
-    freeCell(R1,C1,GbList),
-    freeCell(R2,C2,GbList),
-    freeCell(R3,C3,GbList),	
-    freeCell(R4,C4,GbList).
+    fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %L Tetramino
@@ -571,7 +408,6 @@ fitPiece(j4,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 %[ ][x][ ]
 %              [R3;C3]
 %[R2;C2][R1;C1][R4;C4]
-
 fitPiece(l1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     R1 = R2,
     R1 = R4,
@@ -579,10 +415,7 @@ fitPiece(l1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 	eq(C2,C1,-1),
     eq(R3,R1,-1),
     eq(C4,C1,+1),
-    freeCell(R1,C1,GbList),
-    freeCell(R2,C2,GbList),
-    freeCell(R3,C3,GbList),	
-    freeCell(R4,C4,GbList).
+    fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 
 %   [ ]
 %   [x]
@@ -590,7 +423,6 @@ fitPiece(l1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 %   [R2;C2]
 %   [R1;C1]
 %   [R3;C3][R4;C4]       
-
 fitPiece(l2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     C2 = C1,
     C3 = C1,
@@ -598,17 +430,13 @@ fitPiece(l2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 	eq(R2,R1,-1),
     eq(R3,R1,+1),
     eq(C4,C3,+1),
-    freeCell(R1,C1,GbList),
-    freeCell(R2,C2,GbList),
-    freeCell(R3,C3,GbList),	
-    freeCell(R4,C4,GbList).
+    fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 
 %
 %[ ][x][ ]
 %[ ]              
 %[R2;C2][R1;C1][R4;C4]
 %[R3;C3]
-
 fitPiece(l3,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     R1 = R2,
     R1 = R4,
@@ -616,10 +444,7 @@ fitPiece(l3,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 	eq(C2,C1,-1),
     eq(R3,R2,+1),
     eq(C4,C1,+1),
-    freeCell(R1,C1,GbList),
-    freeCell(R2,C2,GbList),
-    freeCell(R3,C3,GbList),	
-    freeCell(R4,C4,GbList).
+    fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 
 %[ ][ ]
 %   [x]
@@ -627,7 +452,6 @@ fitPiece(l3,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 %[R4;C4][R2;C2]
 %       [R1;C1]
 %       [R3;C3]       
-
 fitPiece(l4,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     C2 = C1,
     C3 = C1,
@@ -635,11 +459,11 @@ fitPiece(l4,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 	eq(R2,R1,-1),
     eq(R3,R1,+1),
     eq(C4,C2,-1),
-    freeCell(R1,C1,GbList),
-    freeCell(R2,C2,GbList),
-    freeCell(R3,C3,GbList),	
-    freeCell(R4,C4,GbList).
+    fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 
+%%%%%%%%%%%%%%%%%%%%%%%%
+%GameBoard Manipulation%
+%%%%%%%%%%%%%%%%%%%%%%%%
 %Discover all the possible cell where a tetramino can be placed for all its rotations
 findPossibleGoals(T,List,GbList) :- 
     findall((T1), rotation(T, T1, _), Lr),
@@ -659,18 +483,33 @@ tetraminoGoal(T,R,C,GbList) :-
     R1 is R + 1,
     \+fitPiece(T,R1,C,_,_,_,_,_,_,GbList).
 
+%Put the piece in the given reference point and then assert all the occupied cells.
+placePiece(T,R1,C1,LGbpre,LGbpost) :-
+    fitPiece(T,R1,C1,R2,C2,R3,C3,R4,C4,LGbpre),
+    L = [[R1,C1],[R2,C2],[R3,C3],[R4,C4]],
+    append(LGbpre,L,LGbpre1),
+    computeNewGameBoard(LGbpre1,LGbpost).
+%   
+
+%Compute the new gameboard after the tetramino placing
+%If one or more rows are full perform removing and row shifting.
+computeNewGameBoard :-
+    createGameBoardList(GbListOld),
+    computeNewGameBoard(GbListOld,GbListNew),
+    retractall(occCell(_,_)),
+    assertList(GbListNew).
+
+computeNewGameBoard. %avoid fail if called when Gb is empty
+
+computeNewGameBoard(GbListOld,GbListNew) :-
+    setof((R),clearedRow(R,GbListOld),ClearedRows),
+    removeRows(ClearedRows,GbListOld,GbListMid),
+    shift(ClearedRows,GbListMid,GbListNew),
+    !.
+
+computeNewGameBoard(GbListOld,GbListOld).
+
 %row shifter for computing new gameBoard
-
-cellToShift(R,C,R1,GbList) :-
-    occCellLG(R,C,GbList),
-    R<R1.
-
-shiftOccCell(_, [], []).
-
-shiftOccCell(N, [[R,C]|T], [[R1,C]|T2]) :-
-    R1 is R + N,
-    shiftOccCell(N, T, T2).
-
 shift([H|T],GbListOld,GbListNew):-
     bagof(([R,C]), cellToShift(R, C, H, GbListOld), ElementToShift),
     shiftOccCell(1, ElementToShift, ShiftedElements),
@@ -682,6 +521,16 @@ shift([H|T],GbListOld,GbListNew):-
 
 shift([],GbListNew,GbListNew).
 
+cellToShift(R,C,R1,GbList) :-
+    occCellLG(R,C,GbList),
+    R<R1.
+
+shiftOccCell(_, [], []).
+
+shiftOccCell(N, [[R,C]|T], [[R1,C]|T2]) :-
+    R1 is R + N,
+    shiftOccCell(N, T, T2).
+
 %Return the row number of the cleared row
 countOccCelInRow(R,N, GbList) :- 
     setof((C),occCellLG(R,C,GbList),Occ),length(Occ,N).
@@ -691,46 +540,17 @@ clearedRow(R, GbList) :-
     gameBoardW(W),
     Occ = W.
 %
-computeNewGameBoard(GbListOld,GbListNew) :-
-    setof((R),clearedRow(R,GbListOld),ClearedRows),
-    removeRows(ClearedRows,GbListOld,GbListMid),
-    shift(ClearedRows,GbListMid,GbListNew),
-    !.
-
-computeNewGameBoard(GbListOld,GbListOld).
-
-computeNewGameBoard :-
-    createGameBoardList(GbListOld),
-    computeNewGameBoard(GbListOld,GbListNew),
-    retractall(occCell(_,_)),
-    assertList(GbListNew).
-
-computeNewGameBoard. %avoid fail if called when Gb is empty
-
 
 assertList([]).
 
 assertList([[R,C]|T]) :-
     assertz(occCell(R,C)),
     assertList(T).
-
-%Put the piece in the given reference point and then assert all the occupied cells.
-placePiece(T,R1,C1,LGbpre,LGbpost) :-
-    fitPiece(T,R1,C1,R2,C2,R3,C3,R4,C4,LGbpre),
-    L = [[R1,C1],[R2,C2],[R3,C3],[R4,C4]],
-    append(LGbpre,L,LGbpre1),
-    computeNewGameBoard(LGbpre1,LGbpost).
-%
-
 %%%%%%%%%%%%%%%%%%  
-
-
-
 
 %%%%%%%%%%%%%%%%%%%%%
 %GameBoard Evaluator%
 %%%%%%%%%%%%%%%%%%%%%
-
 %1) Compute the number of holes in the columns.
 %This algorithm consider as holes all the empty cell below an occupied cell of a certain column.
 %The holes are often the result of a bad move, so the goal is to choose a move that minimize this number.
@@ -747,10 +567,7 @@ holesColumn(R1,C,GbL) :-
     occCellL(R,C,GbL),
     freeCell1(R1,C,GbL),
     R1 > R.
-
 %
-
-
 
 nonContinuosSpaceInRows(N,GbL) :-
     setof((R,C),nonContinuosSpaceInRows(R,C,GbL),NCSIR),
@@ -767,12 +584,11 @@ nonContinuosSpaceInRows(R,C,GbL) :-
     freeCell1(R,C,GbL),
     occCellL(R,C1,GbL),
     occCellL(R,C2,GbL).
-
-
 %
 
 %3) Compute the etropy of each row, then give average value as measure of the "entropy" of the gameboard.
 %Count the occupied cell of a row.
+
 
 %Compute the entropy of a row.
 entropyOfRow(R,Ent,GbL) :-
@@ -788,14 +604,15 @@ entropyOfRow(R,Ent,GbL) :-
 entropyOfRow(_,0,_).
 
 sumEntropyOfGameBoard(SumEnt,GbL) :-
-    findall((Ent),entropyOfRow(_,Ent,GbL),EntropyXRow), 
+    findall((Ent),entropyOfRow(_,Ent,GbL),EntropyXRow),
     sum_list(EntropyXRow,Sum),
     SumEnt is Sum.
 %
 
 %Compute the whole GameBoard score
 gameBoardScore(S,GbL,HC,NCSIR,SumEnt) :-
-    holesInColumn(HC,GbL),
+    %holesInColumn(HC,GbL),
+    HC is 0,
     %nonContinuosSpaceInRows(NCSIR,GbL),
     NCSIR is 0,
     sumEntropyOfGameBoard(SumEnt,GbL),
@@ -814,14 +631,45 @@ scoreMoves([(T,R,C)|Tail],[[S,(T,R,C,GbLPre)]|Tail2],GbLPre) :-
     placePiece(T,R,C,GbLPre,GbLPost),
     gameBoardScore(S,GbLPost,_,_,_),
     scoreMoves(Tail,Tail2,GbLPre).  
-
-
 %////////////////////////////////////////    
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%MaxMax/MinMax                                                                                                                                                                                                                                                                                                                                                    Max/MaxMax move selection%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+callPlacePiece(_,_,[],[]).
+
+callPlacePiece(Tetraminos,GbList,[(T,R,C)|Taill],[[Tetraminos,GbListPost,(T,R,C)]|Tail2]):-
+    placePiece(T,R,C,GbList,GbListPost),
+    callPlacePiece(Tetraminos,GbList,Taill,Tail2).
+
+%Node: [Eval,Tetraminos,GbL,Move]
+%Tetraminos: a list of tetraminos
+%Gb: a list of the occCell for a certain gameboard configuration
+%Move: the move [t,r,c] that allow to obatain the current node, added only when nextNodes is called
+%Eval: the evaluation of the node, added only when the heuristc is called, nextNodes will not see this one
+nextNodes(Level,Node, NextNodes) :-
+    nth1(1, Node, Tetraminos),
+    nth1(2, Node, GbL),
+    nth0(Level, Tetraminos, T),
+    findPossibleGoals(T,L,GbL),
+    callPlacePiece(Tetraminos,GbL,L,NextNodes).
+
+evaluateNode([Tetraminos,GbL,(T,R,C)], [S,Tetraminos,GbL,(T,R,C)]) :-
+    gameBoardScore(S,GbL,_,_,_).
+
+callMinMax(Player,Move) :-
+    tetraminos(T),
+    createGameBoardList(GbL),
+    length(T,Depth),
+    StartingNode = [T,GbL],
+    NextNodesGenerator = nextNodes,
+    Heuristic = evaluateNode,
+    minmax(StartingNode, NextNodesGenerator, Heuristic, 0, Depth, -inf, +inf, NextMove, Player),
+    nth1(4,NextMove,Move).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Planner%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 %Define actions
 %setof(A, action(A), Action)
 
@@ -887,62 +735,85 @@ diff(_,_,Diff) :-
     Diff is 1,
     !.
 
-%getPathOfBestMove search for the best move and then call the planner for the tetris path problem.
-%start and goal are inverted because I want to find the path starting from the goal and coming back to the start.
-%This allow to deal easily with particulare cases like slide or t-spin.
-%If a certain move is actually impossibile to reach (eg: trapped tetramino) the next move is considered.
-
-getPathOfBestMove(T,Plan) :-
-    createGameBoardList(GbL),
-    findMoves(T,ScoreList,GbL), 
-    member(GoalNode, ScoreList),
-    nth1(2, GoalNode, Goal), %take the goal 
-    firstShape(T,T1),
-    Start = (T1,1,5,GbL),
-    serchPath(Goal, Start, RevPlan),
-    reverse(RevPlan,Plan),
-    !.
-
 serchPath(Start, Goal, Plan) :-
     setof(A, action(A), Actions),
     Heuristic=evaluateMovement, 
     planner(Start, Goal, Actions, Heuristic, Plan).
 
+%getPathOfBestMove search for the best move and then call the planner for the tetris path problem.
+%start and goal are inverted because I want to find the path starting from the goal and coming back to the start.
+%This allow to deal easily with particulare cases like slide or t-spin.
+%If a certain move is actually impossibile to reach (eg: trapped tetramino) the next move is considered.
 
+getPathOfBestMove(Player,Plan) :-
+    createGameBoardList(GbL),
+    callMinMax(Player,(Tg,Rg,Cg)),
+    tetraminos([T|_]),
+    firstShape(T,T1),
+    Start = (T1,1,5,GbL),
+    Goal = (Tg,Rg,Cg,GbL),
+    serchPath(Goal, Start, RevPlan),
+    reverse(RevPlan,Plan),
+    !.
 %///////////////////////
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%MaxMax/MinMax                                                                                                                                                                                                                                                                                                                                                    Max/MaxMax move selection%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-tetraminos([t,t]).
+%%%%%%%%%%%%%%%%%%%%%%%%
+%Debugging Helper Rules%
+%%%%%%%%%%%%%%%%%%%%%%%%
+%write game board for debugging
+%call it using: ?- writeGameBoard.
 
-callPlacePiece(_,_,[],[]).
+writeGameBoard :-
+	writeGameBoard(0,0).
 
-callPlacePiece(Tetraminos,GbList,[(T,R,C)|Taill],[[Tetraminos,GbListPost,[T,R,C]]|Tail2]):-
-    placePiece(T,R,C,GbList,GbListPost),
-    callPlacePiece(Tetraminos,GbList,Taill,Tail2).
+writeGameBoard(R,C) :- 
+    gameBoardH(R),
+    nl,
+    write([--]),
+    writeColNumbers(C).
 
-%Node: [Eval,Tetraminos,GbL,Move]
-%Tetraminos: a list of tetraminos
-%Gb: a list of the occCell for a certain gameboard configuration
-%Move: the move [t,r,c] that allow to obatain the current node, added only when nextNodes is called
-%Eval: the evaluation of the node, added only when the heuristc is called, nextNodes will not see this one
-nextNodes(Level,Node, NextNodes) :-
-    nth1(1, Node, Tetraminos),
-    nth1(2, Node, GbL),
-    nth0(Level, Tetraminos, T),
-    findPossibleGoals(T,L,GbL),
-    callPlacePiece(Tetraminos,GbL,L,NextNodes).
+writeGameBoard(R,C) :- 
+    nl, 
+    writeRowNumber(R),
+    writeRow(R,C), 
+    R1 is R + 1, 
+    writeGameBoard(R1,C),
+    !.
 
-evaluateNode([Tetraminos,GbL,Move], [S,Tetraminos,GbL,Move]) :-
-    gameBoardScore(S,GbL,_,_,_).
+writeRowNumber(R):-
+    R >= 10,
+    write([R]),
+    !.
 
-callMinMax(Player,Move) :-
-    tetraminos(T),
-    createGameBoardList(GbL),
-    length(T,Depth),
-    StartingNode = [T,GbL],
-    NextNodesGenerator = nextNodes,
-    Heuristic = evaluateNode,
-    minmax(StartingNode, NextNodesGenerator, Heuristic, 0, Depth, Alpha, Beta, NextMove, Player),
-    nth1(4,NextMove,Move).
+writeRowNumber(R):-
+    write('['),
+    write(0),
+    write(R),
+    write(']'),
+    !.
+
+writeRow(_,C) :- 
+    gameBoardW(C).
+
+writeRow(R,C) :- 
+    occCell(R,C), 
+    write([■]), 
+    C1 is C + 1, 
+    writeRow(R,C1),
+    !.
+
+writeRow(R,C) :- 
+    write([□]),
+    C1 is C + 1,
+    writeRow(R,C1),
+    !.
+
+writeColNumbers(C) :- 
+    gameBoardW(C).
+
+writeColNumbers(C) :- 
+    write([C]), 
+    C1 is C + 1, 
+    writeColNumbers(C1),
+    !.
+%///////////////////
