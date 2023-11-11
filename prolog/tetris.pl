@@ -2,21 +2,23 @@
 /*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 To do (5/11):
 
--test AI SOLO e VS + adeguamento tetrisJs
--debug computeNewGameBoard?
--ottimizzare (o cambiare) euristica + algoritmo genetico per pesi euristica di valutazione??
+-test AI SOLO e VS + adeguamento tetrisJs (gestire anche modalità emergenza nel vs...)
+-debug computeNewGameBoard? (modalità simulazione gioco)
+-ottimizzare (o cambiare) euristica + algoritmo genetico per pesi euristica di valutazione?? (la simulazione può essere usata per tarare l'euristica più velocemente)
+-implementare il logger che spieghi le mosse
 
 Problemi noti:
 -il lookahead potrebbe generare mosse irragiungibili.
 Soluzioni:
-    1)prevalutazione mossa usando il pathfinder (lento).
-    2)restituire in output non la mossa migliore ma la lista delle mosse di tutti i nodi successori alla radice ordinati.
-      in questo modo eventuli mosse irragiungibili possono essere "segnalate" dal pathfinder e scartate, per passare alla successiva.
-      mi aspetto non sia un caso frequente e di basso impatto sulle perfomance.
+    anzitutto rimuovere la possibilità di sengnalare come goal le celle già bloccate
+    poi:
+        1)prevalutazione mossa usando il pathfinder (lento).
+        2)restituire in output non la mossa migliore ma la lista delle mosse di tutti i nodi successori alla radice ordinati.
+        in questo modo eventuli mosse irragiungibili sono "failate" dal pathfinder e scartate, per passare alla successiva.
+        mi aspetto non sia un caso frequente e di basso impatto sulle perfomance.
 
 Bonus:
 -impossible tetris
--implementare il logger che spieghi le mosse
 -implementazione delle sessioni
 */
 :- use_module(library(lists)).
@@ -44,6 +46,10 @@ assert(tetraminos(TList2)).
 occCell(R,C) :-
     http_session_data(occCell(R,C)),!.
 */
+
+occCell(19,0).
+occCell(19,1).
+tetraminos([i,t]).
 
 %%%%%%%%%%%%%%%%%
 %Auxiliary rules%
@@ -618,19 +624,6 @@ gameBoardScore(S,GbL,HC,NCSIR,SumEnt) :-
     sumEntropyOfGameBoard(SumEnt,GbL),
     S1 is SumEnt*10+HC+NCSIR,
     S is -1*S1.  
-
-%Compute the evalution for each available move and put them in an array
-findMoves(T,ScoreList,GbL) :-
-    findPossibleGoals(T,L,GbL),
-    scoreMoves(L,ScoreListUnsort,GbL),
-    sort(1, @>=, ScoreListUnsort, ScoreList).
-
-scoreMoves([],[],_).
-
-scoreMoves([(T,R,C)|Tail],[[S,(T,R,C,GbLPre)]|Tail2],GbLPre) :-
-    placePiece(T,R,C,GbLPre,GbLPost),
-    gameBoardScore(S,GbLPost,_,_,_),
-    scoreMoves(Tail,Tail2,GbLPre).  
 %////////////////////////////////////////    
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -764,7 +757,11 @@ getPathOfBestMove(Player,Plan) :-
 %call it using: ?- writeGameBoard.
 
 writeGameBoard :-
-	writeGameBoard(0,0).
+	writeGameBoard(0,0),
+    nl,
+    tetraminos(Ts),
+    write('tetraminos: '),
+    write(Ts).
 
 writeGameBoard(R,C) :- 
     gameBoardH(R),
@@ -816,4 +813,28 @@ writeColNumbers(C) :-
     C1 is C + 1, 
     writeColNumbers(C1),
     !.
-%///////////////////
+
+
+
+%old predicates...
+%Compute the evalution for each available move and put them in an array (old algorithm pre min max)
+findMoves(T,ScoreList,GbL) :-
+    findPossibleGoals(T,L,GbL),
+    scoreMoves(L,ScoreListUnsort,GbL),
+    sort(1, @>=, ScoreListUnsort, ScoreList).
+
+scoreMoves([],[],_).
+
+scoreMoves([(T,R,C)|Tail],[[S,(T,R,C,GbLPre)]|Tail2],GbLPre) :-
+    placePiece(T,R,C,GbLPre,GbLPost),
+    gameBoardScore(S,GbLPost,_,_,_),
+    scoreMoves(Tail,Tail2,GbLPre).  
+
+%count the occupied cell for a certain column
+countOccCelInColumn(C,N, GbList) :- 
+    setof((R),occCellLG(R,C,GbList),Occ),length(Occ,N).
+
+highestColumn(GbList,High,Column) :-
+    setof((N,C),countOccCelInColumn(C,N, GbList),H),
+    sort(1,@>=,H,HSosrted),
+    nth0(0,HSosrted,(High,Column)).
