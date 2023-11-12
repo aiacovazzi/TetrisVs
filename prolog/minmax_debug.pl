@@ -1,4 +1,4 @@
-%:- module(minmax, [minmax/9]).
+:- module(minmax_debug, [minmax/9]).
 
 nextplayer(max,min).
 nextplayer(min,max).
@@ -10,6 +10,8 @@ operator(maxmax,'@>=').
 
 %minmax recursive case
 minmax(CurrentNode, NextNodesGenerator, Heuristic, Level, Depth, Alpha, Beta, CurrentNodeEvaluated, Player) :-
+    write(Level), write(' '), write(Player),%
+    nl,%
     call(NextNodesGenerator,Level,CurrentNode,NextNodes),
     minmax1(NextNodes,CurrentNode, NextNodesGenerator, Heuristic, Level, Depth, Alpha, Beta, CurrentNodeEvaluated, Player),
     !.
@@ -30,7 +32,17 @@ minmax1(NextNodes, CurrentNode, NextNodesGenerator, Heuristic, Level, Depth, Alp
     operator(Player,Operator),
     sort(1, Operator, EvaluatedNodes, SortedEvaluatedNodes),
     nth1(1,SortedEvaluatedNodes,BestNode),
-    getBest(Level,CurrentNode,BestNode,CurrentNodeEvaluated).
+    getBest(Level,CurrentNode,BestNode,CurrentNodeEvaluated),
+    write(Player),%
+    write(' '),%
+    write(Alpha),%
+    write(' '),%
+    write(Beta),%
+    write(' '),%
+    write(CurrentNodeEvaluated), %
+    nl,%
+    write('_______'),
+    nl.%
 
 iterativeEval([CurrentNode|NextNodes], [CurrentNodeEvaluated|NextNodes2], NextNodesGenerator, Heuristic, Level, Depth, Alpha, Beta, Player):-
     Level1 is Level + 1,
@@ -41,7 +53,7 @@ iterativeEval([CurrentNode|NextNodes], [CurrentNodeEvaluated|NextNodes2], NextNo
 
 iterativeEval([], [], _, _, _, _, _, _, _).
 
-%If the level is > 0 then I bind the best score to CurrentNode, otherwise i give as result the best successor node.
+%If the level is > 0 then I bind the best score to CurrentNode, elsewhere i give as result the best successor node.
 getBest(0,_,BestNode,BestNode) :- !.
 
 getBest(_,CurrentNode,BestNode,CurrentNodeEvaluated) :-
@@ -50,7 +62,9 @@ getBest(_,CurrentNode,BestNode,CurrentNodeEvaluated) :-
     !. 
 
 evaluate(Heuristic,CurrentNode,CurrentNodeEvaluated) :-
-    call(Heuristic,CurrentNode,CurrentNodeEvaluated).
+    call(Heuristic,CurrentNode,CurrentNodeEvaluated),
+    write(CurrentNodeEvaluated), %
+    nl. %
 
 %AlphBeta pruning disabled for maxmax mode
 updateAlphaBeta(maxmax,_,Alpha,Beta,NextNodes,Alpha,Beta,NextNodes).
@@ -58,15 +72,27 @@ updateAlphaBeta(maxmax,_,Alpha,Beta,NextNodes,Alpha,Beta,NextNodes).
 updateAlphaBeta(max,[Eval,_,_,_],Alpha,Beta,NextNodes,Alpha1,Beta1,NextNodes1) :-
     Alpha1 is max(Eval,Alpha),
     Beta1 = Beta,
-    pruneNextNodes(Alpha1,Beta1,NextNodes,NextNodes1).
+    write('Max: '), write(Alpha1), write(' '), write(Beta1),
+    nl,
+    pruneNextNodes(Alpha1,Beta1,NextNodes,NextNodes1),
+    nl.
 
 updateAlphaBeta(min,[Eval,_,_,_],Alpha,Beta,NextNodes,Alpha1,Beta1,NextNodes1) :-
     Beta1 is min(Eval,Beta),
     Alpha1 = Alpha,
-    pruneNextNodes(Alpha1,Beta1,NextNodes,NextNodes1).
+    write('Min: '), write(Alpha1), write(' '), write(Beta1),
+    nl,
+    pruneNextNodes(Alpha1,Beta1,NextNodes,NextNodes1),
+    nl.
 
 pruneNextNodes(Alpha1,Beta1,_,NextNodes1) :-    
     Beta1 =< Alpha1,
+    write('Prune: '),
+    write(Alpha1),%
+    write(' '),%
+    write(Beta1),%
+    write(' '),%
+    nl,
     NextNodes1 = [],
     !.
 

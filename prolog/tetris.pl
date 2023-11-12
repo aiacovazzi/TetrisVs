@@ -1,7 +1,6 @@
 :- module(tetris, [getPathOfBestMove/2,writeGameBoard/0,computeNewGameBoard/0,occCell/2,callMinMax/2,start/1,tetraminos/1,nextNodes/3,evaluateNode/2,evaluateMovement/2,rotate/2,left/2,right/2,down/2]).
 /*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-To do (5/11):
-
+To do (19/11):
 -test AI SOLO e VS + adeguamento tetrisJs (gestire anche modalità emergenza nel vs...)
 -debug computeNewGameBoard? (modalità simulazione gioco)
 -ottimizzare (o cambiare) euristica + algoritmo genetico per pesi euristica di valutazione?? (la simulazione può essere usata per tarare l'euristica più velocemente)
@@ -23,7 +22,7 @@ Bonus:
 */
 :- use_module(library(lists)).
 :- use_module(planner).
-:- use_module(minmax).
+:- use_module(minmax_debug).
 %
 %//////////////////////////////////////////////////////////
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -49,7 +48,7 @@ occCell(R,C) :-
 
 occCell(19,0).
 occCell(19,1).
-tetraminos([i,t]).
+tetraminos([o,o]).
 
 %%%%%%%%%%%%%%%%%
 %Auxiliary rules%
@@ -617,11 +616,11 @@ sumEntropyOfGameBoard(SumEnt,GbL) :-
 
 %Compute the whole GameBoard score
 gameBoardScore(S,GbL,HC,NCSIR,SumEnt) :-
-    %holesInColumn(HC,GbL),
-    HC is 0,
+    holesInColumn(HC,GbL),
     %nonContinuosSpaceInRows(NCSIR,GbL),
     NCSIR is 0,
     sumEntropyOfGameBoard(SumEnt,GbL),
+    %SumEnt is 0,
     S1 is SumEnt*10+HC+NCSIR,
     S is -1*S1.  
 %////////////////////////////////////////    

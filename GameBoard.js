@@ -1,6 +1,7 @@
 import Tetromino from "./Tetromino.js";
 import MapperAI from "./MapperAI.js";
 export default class GameBoard {
+    #theme = null;
     gameBoardW = 10;
     gameBoardH = 20;
 
@@ -112,6 +113,13 @@ export default class GameBoard {
         this.playerOne = option[1];
         this.playerTwo = option[2];
         this.#aiMapper = new MapperAI();
+        if(this.playerTwo == 'None'){
+            this.#theme = new Audio('sounds\\themealoop.mp3');
+        }else{
+            this.#theme = new Audio('sounds\\themebloop.mp3');
+        }
+        this.#theme .loop = true;
+        this.#theme .play();
 
         //assign the proper event listener for human player
         if (this.playerOne == 'Player') {
@@ -307,6 +315,7 @@ export default class GameBoard {
     #setPause() {
         if (this.#pressPause) {
             this.pause = !(this.pause);
+            this.pause ? this.#theme.volume = 0.1 : this.#theme.volume = 1.0;
         }
         this.#pressPause = false;
     }
