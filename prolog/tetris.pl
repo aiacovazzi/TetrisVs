@@ -1,20 +1,21 @@
 :- module(tetris, [getPathOfBestMove/2,writeGameBoard/0,computeNewGameBoard/0,occCell/2,callMinMax/2,start/1,tetraminos/1,nextNodes/3,evaluateNode/2,evaluateMovement/2,rotate/2,left/2,right/2,down/2]).
 /*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 To do (19/11):
--test AI SOLO e VS + adeguamento tetrisJs (gestire anche modalità emergenza nel vs...)
--debug computeNewGameBoard? (modalità simulazione gioco)
--ottimizzare (o cambiare) euristica + algoritmo genetico per pesi euristica di valutazione?? (la simulazione può essere usata per tarare l'euristica più velocemente)
--implementare il logger che spieghi le mosse
-
 Problemi noti:
--il lookahead potrebbe generare mosse irragiungibili.
+-il lookahead genera talvolta mosse irragiungibili.
 Soluzioni:
-    anzitutto rimuovere la possibilità di sengnalare come goal le celle già bloccate
+        1)anzitutto rimuovere la possibilità di segnalare come goal le celle già bloccate
     poi:
         1)prevalutazione mossa usando il pathfinder (lento).
         2)restituire in output non la mossa migliore ma la lista delle mosse di tutti i nodi successori alla radice ordinati.
         in questo modo eventuli mosse irragiungibili sono "failate" dal pathfinder e scartate, per passare alla successiva.
         mi aspetto non sia un caso frequente e di basso impatto sulle perfomance.
+
+-ottimizzare (o cambiare) euristica + algoritmo genetico per pesi euristica di valutazione?? (la simulazione può essere usata per tarare l'euristica più velocemente)
+
+-implementare il logger che spieghi le mosse
+    -pathfinding
+    -min max
 
 Bonus:
 -impossible tetris
@@ -22,7 +23,7 @@ Bonus:
 */
 :- use_module(library(lists)).
 :- use_module(planner).
-:- use_module(minmax_debug).
+:- use_module(minmax).
 %
 %//////////////////////////////////////////////////////////
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -30,6 +31,8 @@ Bonus:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 gameBoardW(10).
 gameBoardH(20).
+tetraminoSpawnX(5).
+tetraminoSpawnY(1).
 :-dynamic(occCell/2).
 %the starting position of the playing tetramino
 
@@ -46,9 +49,18 @@ occCell(R,C) :-
     http_session_data(occCell(R,C)),!.
 */
 
-occCell(19,0).
-occCell(19,1).
-tetraminos([o,o]).
+/*
+occCell(10,0).
+occCell(10,1).
+occCell(10,2).
+occCell(10,3).
+occCell(10,4).
+occCell(10,5).
+occCell(10,6).
+occCell(10,7).
+occCell(10,8).
+occCell(10,9).
+*/
 
 %%%%%%%%%%%%%%%%%
 %Auxiliary rules%
@@ -153,23 +165,15 @@ occCellL(R,C,GbList) :-
 occCellLG(R,C,GbList) :-
     member([R,C],GbList).
 
-%Check if a cell is avalaible and if the indexes are not out of bound.
-freeCell(R,C,GbList) :- 
-    gameBoardH(H), 
-    gameBoardW(W), 
-    R >= 0, R<H, 
-    C >=0, C<W, 
-    \+occCellL(R,C,GbList).
-
-%Generate all the free cell on the gameboard
+%Generate all the free and reachable cell on the gameboard
 freeCell1(R,C,GbList) :- 
     gameBoardH(H),
     gen(0, H, R),    
     gameBoardW(W),
     gen(0, W, C),    
-    \+occCellL(R,C,GbList).
+    freeCell(R,C,GbList).
 
-%check if there is space for a tetramin expressed in term of 4 cells.
+%check if there is space for a tetramino expressed in term of 4 cells.
 fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     freeCell(R1,C1,GbList),
     freeCell(R2,C2,GbList),
@@ -742,7 +746,9 @@ getPathOfBestMove(Player,Plan) :-
     callMinMax(Player,(Tg,Rg,Cg)),
     tetraminos([T|_]),
     firstShape(T,T1),
-    Start = (T1,1,5,GbL),
+    tetraminoSpawnX(X),
+    tetraminoSpawnY(Y),
+    Start = (T1,Y,X,GbL),
     Goal = (Tg,Rg,Cg,GbL),
     serchPath(Goal, Start, RevPlan),
     reverse(RevPlan,Plan),
@@ -813,7 +819,42 @@ writeColNumbers(C) :-
     writeColNumbers(C1),
     !.
 
+%wip preidcates
+%Check if a cell is avalaible and if the indexes are not out of bound.
+freeCell(R,C,GbList) :- 
+    gameBoardH(H), 
+    gameBoardW(W), 
+    R >= 0, R<H, 
+    C >=0, C<W, 
+    \+occCellL(R,C,GbList).
 
+freeReachableCell(R,C,GbList) :-
+    tetraminoSpawnX(C),
+    tetraminoSpawnY(R),
+    freeCell(R,C,GbList),
+    !.
+
+freeReachableCell(R,C,GbList) :-
+    freeCell(R,C,GbList),
+    R1 is R-1,
+    freeReachableCell(R1,C,GbList),
+    !.
+
+freeReachableCell(R,C,GbList) :-
+    freeCell(R,C,GbList),
+    tetraminoSpawnX(Cx),
+    C < Cx,
+    (C1 is C + 1),
+    freeReachableCell(R,C1,GbList),
+    !.
+
+freeReachableCell(R,C,GbList) :-
+    freeCell(R,C,GbList),
+    tetraminoSpawnX(Cx),
+    C > Cx,
+    (C1 is C - 1),
+    freeCell(R,C1,GbList),
+    !.
 
 %old predicates...
 %Compute the evalution for each available move and put them in an array (old algorithm pre min max)

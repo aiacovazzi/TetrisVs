@@ -34,7 +34,7 @@ export default class MapperAI {
     }
 
     #getPath(gB) {
-        const data = this.#callApi('path/maxmax', 'GET', null);
+        const data = this.#callApi('path/'+gB.aiPlayer, 'GET', null);
         gB.aiMoves = JSON.parse(data);
     }
 
@@ -44,6 +44,12 @@ export default class MapperAI {
         this.#assertTetraminos(gB);
         this.#getPath(gB);
     }
+
+    assertBoard(gB) {
+        this.#assertOccupiedCell(gB);
+        this.#assertTetraminos(gB);
+    }
+
     reset(){
         this.#callApi('retcell', 'GET', null);
     }

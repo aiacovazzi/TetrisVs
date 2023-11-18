@@ -1,4 +1,4 @@
-%:- module(minmax, [minmax/9]).
+:- module(minmax, [minmax/9]).
 
 nextplayer(max,min).
 nextplayer(min,max).

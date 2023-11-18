@@ -66,7 +66,7 @@ reqStart(T,_Request) :-
 %path find the best path for the tetramino
 :- http_handler(root(path/Player), path(Player), []).
 
-path(P,_Request) :-
+path(Player,_Request) :-
     cors_enable,
     getPathOfBestMove(Player,Plan),
     reply_json_dict(Plan).

@@ -1,3 +1,7 @@
+//"p1 wins" even if p2 win!
+//game over and win sounds
+//gestire anche modalità emergenza nel vs...
+//refactoring
 import Tetromino from "./Tetromino.js";
 import MapperAI from "./MapperAI.js";
 export default class GameBoard {
@@ -66,7 +70,8 @@ export default class GameBoard {
     aiMoves = [];
     tetraminoPositionsMatrix = [];
     currentAndNextTetramino = [];
-    gameMode = "SinglePlayer";
+    #aiTurns = [];
+    aiPlayer = null;
 
     //all the keyCode here: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/keyCode
     #keydownP1 = event => {
@@ -113,26 +118,25 @@ export default class GameBoard {
         this.playerOne = option[1];
         this.playerTwo = option[2];
         this.#aiMapper = new MapperAI();
-        if(this.playerTwo == 'None'){
-            this.#theme = new Audio('sounds\\themealoop.mp3');
-        }else{
-            this.#theme = new Audio('sounds\\themebloop.mp3');
-        }
-        this.#theme .loop = true;
-        this.#theme .play();
 
         //assign the proper event listener for human player
         if (this.playerOne == 'Player') {
             document.addEventListener("keydown", this.#keydownP1);
+        }else{
+            this.#aiTurns.push(true);
         }
 
         if (this.playerTwo == 'Player') {
             document.addEventListener("keydown", this.#keydownP2);
-        } 
+        }else{
+            this.#aiTurns.push(false);
+        }
 
         //enable AI
         if (this.playerOne == 'AI' || this.playerTwo == 'AI') {
             this.#aiEnabled = true;
+            this.playersNumber == 1 ? this.aiPlayer = 'maxmax' : this.aiPlayer = 'max'; 
+        
         }
 
         if (this.#aiEnabled && !this.gameOver) {
@@ -149,16 +153,23 @@ export default class GameBoard {
         if (this.playerTwo != 'None') {
             this.#p2NextTetromino = new Tetromino();
             this.p2NextTetrominoIndex = this.#p2NextTetromino.color;
-            this.gameMode = "SinglePlayer";
         }
-        
+
+        this.#setSong();        
         this.#setIntervalMovement(this.#intervalMs);
         this.#levelInterval = setInterval(function () { if (!mov.pause) { mov.#nextSec() } }, 1000);
+    }
+
+    #setSong(){
+        this.playersNumber == 1 ? this.#theme = new Audio('sounds\\themealoop.mp3') : this.#theme = new Audio('sounds\\themebloop.mp3');
+        this.#theme.loop = true;
+        this.#theme.play();
     }
 
     gameLoop() {
         if (!this.stopPlaying) {
             if (!this.pause) {
+                console.log(this.turn);
                 if (!this.#tetrominoMoving) {
                     this.#checkCompleteLine();
                     this.#tetraX = this.#startX;
@@ -175,13 +186,17 @@ export default class GameBoard {
                     this.#prepareTetraminosArray(this.turn);
                     this.gameOver = !(this.#checkCollision());
                     //this.pause = true;
-                    if (this.#aiEnabled && !this.gameOver) {
-                        this.#aiMapper.getSolution(this);
+                    if(this.#aiEnabled && !this.gameOver){
+                        if (this.#isAiTurn() ) {
+                            this.#aiMapper.getSolution(this);
 
+                        }else{
+                            this.#aiMapper.assertBoard(this);
+                        }
                     }
                 } else {
                     //then allows for player movement
-                    if (this.#aiEnabled) {
+                    if (this.#isAiTurn()) {
                         this.#readMoves = true;
                         this.#executeAiMoves();
                     }
@@ -201,7 +216,11 @@ export default class GameBoard {
     #setIntervalMovement(intervalMs) {
         var mov = this;
         mov.#intervalMs = intervalMs;
-        this.#interval = setInterval(function () { if (!mov.pause && !mov.#aiEnabled) { mov.#move(true) } }, mov.#intervalMs);
+        this.#interval = setInterval(function () { if (!mov.pause && !mov.#isAiTurn()) { mov.#move(true) } }, mov.#intervalMs);
+    }
+
+    #isAiTurn(){
+        return this.#aiTurns.includes(this.turn);
     }
 
     #nextSec() {
@@ -249,7 +268,6 @@ export default class GameBoard {
                 this.currentAndNextTetramino = [this.tetromino.color, this.#p1NextTetromino.color, this.#p2NextTetromino.color];
             }
         }
-        console.log(this.currentAndNextTetramino);
     }
 
     #rotate() {
@@ -368,12 +386,6 @@ export default class GameBoard {
                         this.tetraminoPositionsMatrix.push([i + this.#tetraY, j + this.#tetraX]);
                     }
                 }
-                //test white for make visible the tetraminos' matix
-                /*
-                if(this.tetromino.matrix[i][j] == 0){
-                    this.gameBoardMatrix[i + this.#tetraY][j + this.#tetraX] = 8;
-                }
-                */
             }
         }
     }
@@ -430,34 +442,38 @@ export default class GameBoard {
     }
 
     #executeAiMoves() {
-        //console.log(this.aiMoves);
         if (this.#readMoves) {
             if (this.aiMoves.length) {
                 const move = this.aiMoves[0];
                 //console.log(this.aiMoves);
 
                 this.aiMoves.shift();
-                switch (move) {
-                    case 'rotate':
-                        this.#p1Rotate = true;
-                        break;
-                    case 'left':
-                        this.#p1Left = true;
-                        break;
-                    case 'right':
-                        this.#p1Right = true;
-                        break;
-                    case 'down':
-                        this.#p1Down = true;
-                        break;
-                }
+                this.#aiAction(move,this.turn);
             } else {
                 //when the array of moves is empty
                 //adding down commit the position and force the next tetromino to appear
-                this.#p1Down = true;
+                this.#aiAction('down',this.turn)
                 this.#readMoves = false;
             }
         }
+
+    }
+
+    #aiAction(action,turn){
+        switch (action) {
+                    case 'rotate':
+                        turn ? this.#p1Rotate = true: this.#p2Rotate = true;                        
+                        break;
+                    case 'left':
+                        turn ? this.#p1Left = true: this.#p2Left = true; 
+                        break;
+                    case 'right':
+                        turn ? this.#p1Right = true: this.#p2Right = true;
+                        break;
+                    case 'down':
+                        turn ? this.#p1Down = true: this.#p2Down = true;
+                        break;
+                }
 
     }
 }
