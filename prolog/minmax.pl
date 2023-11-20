@@ -1,4 +1,4 @@
-:- module(minmax, [minmax/9]).
+:- module(minmax, [minmax/10]).
 
 nextplayer(max,min).
 nextplayer(min,max).
@@ -9,21 +9,21 @@ operator(min,'@=<').
 operator(maxmax,'@>=').
 
 %minmax recursive case
-minmax(CurrentNode, NextNodesGenerator, Heuristic, Level, Depth, Alpha, Beta, CurrentNodeEvaluated, Player) :-
+minmax(CurrentNode, NextNodesGenerator, Heuristic, Level, Depth, Alpha, Beta, CurrentNodeEvaluated, NextNodesEvaluated, Player) :-
     call(NextNodesGenerator,Level,CurrentNode,NextNodes),
-    minmax1(NextNodes,CurrentNode, NextNodesGenerator, Heuristic, Level, Depth, Alpha, Beta, CurrentNodeEvaluated, Player),
+    minmax1(NextNodes,CurrentNode, NextNodesGenerator, Heuristic, Level, Depth, Alpha, Beta, CurrentNodeEvaluated, NextNodesEvaluated, Player),
     !.
 
 %minmax, max depth reached
-minmax(CurrentNode, _, Heuristic, Depth, Depth, _, _, CurrentNodeEvaluated, _) :-
+minmax(CurrentNode, _, Heuristic, Depth, Depth, _, _, CurrentNodeEvaluated, _, _) :-
     evaluate(Heuristic,CurrentNode,CurrentNodeEvaluated).
 
 %no successor for the current node
-minmax1([],CurrentNode, _, Heuristic, _, _, _, _, CurrentNodeEvaluated,_) :-
+minmax1([],CurrentNode, _, Heuristic, _, _, _, _, CurrentNodeEvaluated, _, _) :-
     evaluate(Heuristic,CurrentNode,CurrentNodeEvaluated).
 
 %there are successors for the current node
-minmax1(NextNodes, CurrentNode, NextNodesGenerator, Heuristic, Level, Depth, Alpha, Beta, CurrentNodeEvaluated, Player) :-
+minmax1(NextNodes, CurrentNode, NextNodesGenerator, Heuristic, Level, Depth, Alpha, Beta, CurrentNodeEvaluated, SortedEvaluatedNodes, Player) :-
     %call the minmax for each node in NextNodes and collect evaluation for each node for the next player and level+1
     iterativeEval(NextNodes, EvaluatedNodes, NextNodesGenerator, Heuristic, Level, Depth, Alpha, Beta, Player),
     %BestNode is the best one according to the operator related to the player
@@ -35,7 +35,7 @@ minmax1(NextNodes, CurrentNode, NextNodesGenerator, Heuristic, Level, Depth, Alp
 iterativeEval([CurrentNode|NextNodes], [CurrentNodeEvaluated|NextNodes2], NextNodesGenerator, Heuristic, Level, Depth, Alpha, Beta, Player):-
     Level1 is Level + 1,
     nextplayer(Player,NextPlayer),
-    minmax(CurrentNode, NextNodesGenerator, Heuristic, Level1, Depth, Alpha, Beta, CurrentNodeEvaluated, NextPlayer),
+    minmax(CurrentNode, NextNodesGenerator, Heuristic, Level1, Depth, Alpha, Beta, CurrentNodeEvaluated, _, NextPlayer),
     updateAlphaBeta(Player,CurrentNodeEvaluated,Alpha,Beta,NextNodes,Alpha1,Beta1,NextNodes1),
     iterativeEval(NextNodes1, NextNodes2, NextNodesGenerator, Heuristic, Level, Depth, Alpha1, Beta1, Player).
 

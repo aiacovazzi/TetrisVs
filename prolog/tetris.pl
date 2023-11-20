@@ -1,23 +1,15 @@
-:- module(tetris, [getPathOfBestMove/2,writeGameBoard/0,computeNewGameBoard/0,occCell/2,callMinMax/2,start/1,tetraminos/1,nextNodes/3,evaluateNode/2,evaluateMovement/2,rotate/2,left/2,right/2,down/2]).
+:- module(tetris, [getPathOfBestMove/2,writeGameBoard/0,computeNewGameBoard/0,occCell/2,start/1,tetraminos/1,nextNodes/3,evaluateNode/2,evaluateMovement/2,rotate/2,left/2,right/2,down/2]).
 /*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-To do (19/11):
-Problemi noti:
--il lookahead genera talvolta mosse irragiungibili.
-Soluzioni:
-        1)anzitutto rimuovere la possibilità di segnalare come goal le celle già bloccate
-    poi:
-        1)prevalutazione mossa usando il pathfinder (lento).
-        2)restituire in output non la mossa migliore ma la lista delle mosse di tutti i nodi successori alla radice ordinati.
-        in questo modo eventuli mosse irragiungibili sono "failate" dal pathfinder e scartate, per passare alla successiva.
-        mi aspetto non sia un caso frequente e di basso impatto sulle perfomance.
+>Problemi noti:
+-ottimizzare (o cambiare) euristica; migliorare velocità e numero di righe risolte.
 
--ottimizzare (o cambiare) euristica + algoritmo genetico per pesi euristica di valutazione?? (la simulazione può essere usata per tarare l'euristica più velocemente)
-
+>To Do
 -implementare il logger che spieghi le mosse
     -pathfinding
     -min max
+-rimuovere la possibilità di segnalare come goal le celle già bloccate(?)
 
-Bonus:
+>Bonus:
 -impossible tetris
 -implementazione delle sessioni
 */
@@ -49,18 +41,14 @@ occCell(R,C) :-
     http_session_data(occCell(R,C)),!.
 */
 
-/*
-occCell(10,0).
-occCell(10,1).
-occCell(10,2).
-occCell(10,3).
-occCell(10,4).
-occCell(10,5).
-occCell(10,6).
-occCell(10,7).
-occCell(10,8).
-occCell(10,9).
-*/
+occCell(19,0).
+occCell(18,0).
+occCell(17,0).
+occCell(16,0).
+
+occCell(19,1).
+occCell(18,1).
+occCell(17,1).
 
 %%%%%%%%%%%%%%%%%
 %Auxiliary rules%
@@ -578,23 +566,6 @@ holesColumn(R1,C,GbL) :-
     R1 > R.
 %
 
-nonContinuosSpaceInRows(N,GbL) :-
-    setof((R,C),nonContinuosSpaceInRows(R,C,GbL),NCSIR),
-    length(NCSIR,N),
-    !.
-
-nonContinuosSpaceInRows(0,_) :-!.
-
-nonContinuosSpaceInRows(R,C,GbL) :-
-    gameBoardW(W),
-    gen(0, W, C1),
-    gen(C1, W, C2),
-    gen(C1, C2, C),
-    freeCell1(R,C,GbL),
-    occCellL(R,C1,GbL),
-    occCellL(R,C2,GbL).
-%
-
 %3) Compute the etropy of each row, then give average value as measure of the "entropy" of the gameboard.
 %Count the occupied cell of a row.
 
@@ -653,15 +624,14 @@ nextNodes(Level,Node, NextNodes) :-
 evaluateNode([Tetraminos,GbL,(T,R,C)], [S,Tetraminos,GbL,(T,R,C)]) :-
     gameBoardScore(S,GbL,_,_,_).
 
-callMinMax(Player,Move) :-
+callMinMax(Player, EvaluatedNodes) :-
     tetraminos(T),
     createGameBoardList(GbL),
     length(T,Depth),
     StartingNode = [T,GbL],
     NextNodesGenerator = nextNodes,
     Heuristic = evaluateNode,
-    minmax(StartingNode, NextNodesGenerator, Heuristic, 0, Depth, -inf, +inf, NextMove, Player),
-    nth1(4,NextMove,Move).
+    minmax(StartingNode, NextNodesGenerator, Heuristic, 0, Depth, -inf, +inf, _, EvaluatedNodes, Player).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Planner%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -743,12 +713,15 @@ serchPath(Start, Goal, Plan) :-
 
 getPathOfBestMove(Player,Plan) :-
     createGameBoardList(GbL),
-    callMinMax(Player,(Tg,Rg,Cg)),
+    callMinMax(Player,NextNodesEvaluated),
     tetraminos([T|_]),
     firstShape(T,T1),
     tetraminoSpawnX(X),
     tetraminoSpawnY(Y),
     Start = (T1,Y,X,GbL),
+    !,
+    member(Node,NextNodesEvaluated),
+    nth1(4,Node,(Tg,Rg,Cg)),    
     Goal = (Tg,Rg,Cg,GbL),
     serchPath(Goal, Start, RevPlan),
     reverse(RevPlan,Plan),
@@ -819,6 +792,10 @@ writeColNumbers(C) :-
     writeColNumbers(C1),
     !.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 %wip preidcates
 %Check if a cell is avalaible and if the indexes are not out of bound.
 freeCell(R,C,GbList) :- 
@@ -873,6 +850,9 @@ scoreMoves([(T,R,C)|Tail],[[S,(T,R,C,GbLPre)]|Tail2],GbLPre) :-
 %count the occupied cell for a certain column
 countOccCelInColumn(C,N, GbList) :- 
     setof((R),occCellLG(R,C,GbList),Occ),length(Occ,N).
+
+aggregateHeight(GbList,Sum) :-
+    setof((C,N),countOccCelInColumn(C,N, GbList),H).
 
 highestColumn(GbList,High,Column) :-
     setof((N,C),countOccCelInColumn(C,N, GbList),H),
