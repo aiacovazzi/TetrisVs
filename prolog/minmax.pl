@@ -55,12 +55,14 @@ evaluate(Heuristic,CurrentNode,CurrentNodeEvaluated) :-
 %AlphBeta pruning disabled for maxmax mode
 updateAlphaBeta(maxmax,_,Alpha,Beta,NextNodes,Alpha,Beta,NextNodes).
 
-updateAlphaBeta(max,[Eval,_,_,_],Alpha,Beta,NextNodes,Alpha1,Beta1,NextNodes1) :-
+updateAlphaBeta(max,CurrentNodeEvaluated,Alpha,Beta,NextNodes,Alpha1,Beta1,NextNodes1) :-
+    nth1(1,CurrentNodeEvaluated,Eval),
     Alpha1 is max(Eval,Alpha),
     Beta1 = Beta,
     pruneNextNodes(Alpha1,Beta1,NextNodes,NextNodes1).
 
-updateAlphaBeta(min,[Eval,_,_,_],Alpha,Beta,NextNodes,Alpha1,Beta1,NextNodes1) :-
+updateAlphaBeta(min,CurrentNodeEvaluated,Alpha,Beta,NextNodes,Alpha1,Beta1,NextNodes1) :-
+    nth1(1,CurrentNodeEvaluated,Eval),
     Beta1 is min(Eval,Beta),
     Alpha1 = Alpha,
     pruneNextNodes(Alpha1,Beta1,NextNodes,NextNodes1).

@@ -1,13 +1,12 @@
 :- module(tetris, [getPathOfBestMove/2,writeGameBoard/0,computeNewGameBoard/0,occCell/2,start/1,tetraminos/1,nextNodes/3,evaluateNode/2,evaluateMovement/2,rotate/2,left/2,right/2,down/2]).
 /*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 >Problemi noti:
--ottimizzare (o cambiare) euristica; migliorare velocità e numero di righe risolte.
+-ottimizzare (o cambiare) euristica; migliorare velocità.
 
 >To Do
 -implementare il logger che spieghi le mosse
     -pathfinding
     -min max
--rimuovere la possibilità di segnalare come goal le celle già bloccate(?)
 
 >Bonus:
 -impossible tetris
@@ -49,6 +48,10 @@ occCell(16,0).
 occCell(19,1).
 occCell(18,1).
 occCell(17,1).
+
+occCell(19,2).
+occCell(19,3).
+occCell(19,4).
 
 %%%%%%%%%%%%%%%%%
 %Auxiliary rules%
@@ -152,6 +155,14 @@ occCellL(R,C,GbList) :-
 %Check/Generate cell  occupied in the list
 occCellLG(R,C,GbList) :-
     member([R,C],GbList).
+
+%Check if a cell is avalaible and if the indexes are not out of bound.
+freeCell(R,C,GbList) :- 
+    gameBoardH(H), 
+    gameBoardW(W), 
+    R >= 0, R<H, 
+    C >=0, C<W, 
+    \+occCellL(R,C,GbList).
 
 %Generate all the free and reachable cell on the gameboard
 freeCell1(R,C,GbList) :- 
@@ -481,30 +492,31 @@ tetraminoGoal(T,R,C,GbList) :-
     \+fitPiece(T,R1,C,_,_,_,_,_,_,GbList).
 
 %Put the piece in the given reference point and then assert all the occupied cells.
-placePiece(T,R1,C1,LGbpre,LGbpost) :-
+placePiece(T,R1,C1,LGbpre,LGbpost,NumberOfClearedRows) :-
     fitPiece(T,R1,C1,R2,C2,R3,C3,R4,C4,LGbpre),
     L = [[R1,C1],[R2,C2],[R3,C3],[R4,C4]],
     append(LGbpre,L,LGbpre1),
-    computeNewGameBoard(LGbpre1,LGbpost).
+    computeNewGameBoard(LGbpre1,LGbpost,NumberOfClearedRows).
 %   
 
 %Compute the new gameboard after the tetramino placing
 %If one or more rows are full perform removing and row shifting.
 computeNewGameBoard :-
     createGameBoardList(GbListOld),
-    computeNewGameBoard(GbListOld,GbListNew),
+    computeNewGameBoard(GbListOld,GbListNew,_),
     retractall(occCell(_,_)),
     assertList(GbListNew).
 
 computeNewGameBoard. %avoid fail if called when Gb is empty
 
-computeNewGameBoard(GbListOld,GbListNew) :-
+computeNewGameBoard(GbListOld,GbListNew,NumberOfClearedRows) :-
     setof((R),clearedRow(R,GbListOld),ClearedRows),
     removeRows(ClearedRows,GbListOld,GbListMid),
+    length(ClearedRows,NumberOfClearedRows),
     shift(ClearedRows,GbListMid,GbListNew),
     !.
 
-computeNewGameBoard(GbListOld,GbListOld).
+computeNewGameBoard(GbListOld,GbListOld,0).
 
 %row shifter for computing new gameBoard
 shift([H|T],GbListOld,GbListNew):-
@@ -548,27 +560,61 @@ assertList([[R,C]|T]) :-
 %%%%%%%%%%%%%%%%%%%%%
 %GameBoard Evaluator%
 %%%%%%%%%%%%%%%%%%%%%
-%1) Compute the number of holes in the columns.
-%This algorithm consider as holes all the empty cell below an occupied cell of a certain column.
-%The holes are often the result of a bad move, so the goal is to choose a move that minimize this number.
-holesInColumn(N,GbL) :- 
-    setof((R,C),holesColumn(R,C,GbL),HolesColumn),
-    length(HolesColumn,N),
-    !.
 
-holesInColumn(0,_).
+%count the occupied cell for a certain column
+countOccCelInColumn(C,N,GbList) :- 
+    setof((R),occCellLG(R,C,GbList),Occ),length(Occ,N).
 
-holesColumn(R1,C,GbL) :-
+topOccCelInColumn(GbList,RT) :- 
     gameBoardW(W),
-    gen(0, W, C),
-    occCellL(R,C,GbL),
-    freeCell1(R1,C,GbL),
-    R1 > R.
-%
+    gen(0, W, C), 
+    findall((R),occCellLG(R,C,GbList),[RT|_]).
 
-%3) Compute the etropy of each row, then give average value as measure of the "entropy" of the gameboard.
-%Count the occupied cell of a row.
+occCellForColumn(GbList,O4C) :-
+    gameBoardW(W),
+    findall((N),countOccCelInColumn(_,N, GbList),O4C1),
+    length(O4C1,N),
+    W1 is W - N,
+    build(0, W1, ListOfZeros),
+    append(O4C1,ListOfZeros,O4C).
 
+
+build(X, N, List)  :- 
+    length(List, N), 
+    maplist(=(X), List).
+
+sum(X, Y, Z) :- 
+    Z is X + Y.
+
+heightForColumn(GbList,H4C) :-
+    gameBoardH(H),
+    gameBoardW(W),
+    findall((HC),(topOccCelInColumn(GbList,TC),HC is H - TC),H4C1),
+    length(H4C1,N),
+    W1 is W - N,
+    build(0, W1, ListOfZeros),
+    append(H4C1,ListOfZeros,H4C).
+
+subForHoles(X, Y, Z) :- 
+    Z is X - Y.
+
+totalHoles(L1, L2, R) :-
+    maplist(subForHoles, L1, L2, R1),
+    sumlist(R1,R).
+
+deleteLast(X,Y):-
+    reverse(X,[_|X1]), reverse(X1,Y).
+
+deleteFirst([_|Y],Y).
+
+subForBump(X, Y, Z) :-
+    Z is abs(X-Y).
+
+bumpiness(L1, L2, R) :-
+    deleteFirst(L1, L12),
+    deleteLast(L2,L22),
+    maplist(subForBump, L12, L22, R1),
+    sumlist(R1,R).
 
 %Compute the entropy of a row.
 entropyOfRow(R,Ent,GbL) :-
@@ -585,28 +631,44 @@ entropyOfRow(_,0,_).
 
 sumEntropyOfGameBoard(SumEnt,GbL) :-
     findall((Ent),entropyOfRow(_,Ent,GbL),EntropyXRow),
-    sum_list(EntropyXRow,Sum),
-    SumEnt is Sum.
-%
+    sum_list(EntropyXRow,SumEnt).
 
-%Compute the whole GameBoard score
-gameBoardScore(S,GbL,HC,NCSIR,SumEnt) :-
-    holesInColumn(HC,GbL),
-    %nonContinuosSpaceInRows(NCSIR,GbL),
-    NCSIR is 0,
-    sumEntropyOfGameBoard(SumEnt,GbL),
-    %SumEnt is 0,
-    S1 is SumEnt*10+HC+NCSIR,
-    S is -1*S1.  
+gameBoardScore(GbList,AggregateHeight,RowCleared,Holes,Bumpiness,Score) :-
+    occCellForColumn(GbList,O4C),
+    heightForColumn(GbList,H4C),
+    %AggregateHeight
+    sumlist(H4C,AggregateHeight),
+    %Holes
+    totalHoles(H4C, O4C, Holes),
+    %Bumpiness
+    bumpiness(H4C, H4C, Bumpiness),
+    %Score
+    E is -10,
+    sumEntropyOfGameBoard(SumEnt,GbList),
+    Score is E*SumEnt - AggregateHeight - Holes - Bumpiness + RowCleared.
 %////////////////////////////////////////    
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %MaxMax/MinMax                                                                                                                                                                                                                                                                                                                                                    Max/MaxMax move selection%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+checkElegibility(Tn,R,C,GbList):-
+    rotation(T, Tn, _),
+    firstShape(T,T1),
+    tetraminoSpawnX(X),
+    tetraminoSpawnY(Y),
+    Start = (T1,Y,X,GbList),    
+    Goal = (Tn,R,C,GbList),
+    serchPath(Goal, Start, _).
+
 callPlacePiece(_,_,[],[]).
 
-callPlacePiece(Tetraminos,GbList,[(T,R,C)|Taill],[[Tetraminos,GbListPost,(T,R,C)]|Tail2]):-
-    placePiece(T,R,C,GbList,GbListPost),
+callPlacePiece(Tetraminos,GbList,[(T,R,C)|Taill],[[Tetraminos,GbListPost,ClRow,(T,R,C)]|Tail2]):-
+    checkElegibility(T,R,C,GbList),
+    placePiece(T,R,C,GbList,GbListPost,ClRow),
+    callPlacePiece(Tetraminos,GbList,Taill,Tail2),
+    !.
+
+callPlacePiece(Tetraminos,GbList,[_|Taill],Tail2):-
     callPlacePiece(Tetraminos,GbList,Taill,Tail2).
 
 %Node: [Eval,Tetraminos,GbL,Move]
@@ -621,14 +683,14 @@ nextNodes(Level,Node, NextNodes) :-
     findPossibleGoals(T,L,GbL),
     callPlacePiece(Tetraminos,GbL,L,NextNodes).
 
-evaluateNode([Tetraminos,GbL,(T,R,C)], [S,Tetraminos,GbL,(T,R,C)]) :-
-    gameBoardScore(S,GbL,_,_,_).
+evaluateNode([Tetraminos,GbL,ClRow,(T,R,C)], [S,Tetraminos,GbL,ClRow,(T,R,C)]) :-
+    gameBoardScore(GbL,_,ClRow,_,_,S).
 
 callMinMax(Player, EvaluatedNodes) :-
     tetraminos(T),
     createGameBoardList(GbL),
     length(T,Depth),
-    StartingNode = [T,GbL],
+    StartingNode = [T,GbL,0],
     NextNodesGenerator = nextNodes,
     Heuristic = evaluateNode,
     minmax(StartingNode, NextNodesGenerator, Heuristic, 0, Depth, -inf, +inf, _, EvaluatedNodes, Player).
@@ -721,7 +783,7 @@ getPathOfBestMove(Player,Plan) :-
     Start = (T1,Y,X,GbL),
     !,
     member(Node,NextNodesEvaluated),
-    nth1(4,Node,(Tg,Rg,Cg)),    
+    nth1(5,Node,(Tg,Rg,Cg)),    
     Goal = (Tg,Rg,Cg,GbL),
     serchPath(Goal, Start, RevPlan),
     reverse(RevPlan,Plan),
@@ -791,70 +853,4 @@ writeColNumbers(C) :-
     C1 is C + 1, 
     writeColNumbers(C1),
     !.
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%wip preidcates
-%Check if a cell is avalaible and if the indexes are not out of bound.
-freeCell(R,C,GbList) :- 
-    gameBoardH(H), 
-    gameBoardW(W), 
-    R >= 0, R<H, 
-    C >=0, C<W, 
-    \+occCellL(R,C,GbList).
-
-freeReachableCell(R,C,GbList) :-
-    tetraminoSpawnX(C),
-    tetraminoSpawnY(R),
-    freeCell(R,C,GbList),
-    !.
-
-freeReachableCell(R,C,GbList) :-
-    freeCell(R,C,GbList),
-    R1 is R-1,
-    freeReachableCell(R1,C,GbList),
-    !.
-
-freeReachableCell(R,C,GbList) :-
-    freeCell(R,C,GbList),
-    tetraminoSpawnX(Cx),
-    C < Cx,
-    (C1 is C + 1),
-    freeReachableCell(R,C1,GbList),
-    !.
-
-freeReachableCell(R,C,GbList) :-
-    freeCell(R,C,GbList),
-    tetraminoSpawnX(Cx),
-    C > Cx,
-    (C1 is C - 1),
-    freeCell(R,C1,GbList),
-    !.
-
-%old predicates...
-%Compute the evalution for each available move and put them in an array (old algorithm pre min max)
-findMoves(T,ScoreList,GbL) :-
-    findPossibleGoals(T,L,GbL),
-    scoreMoves(L,ScoreListUnsort,GbL),
-    sort(1, @>=, ScoreListUnsort, ScoreList).
-
-scoreMoves([],[],_).
-
-scoreMoves([(T,R,C)|Tail],[[S,(T,R,C,GbLPre)]|Tail2],GbLPre) :-
-    placePiece(T,R,C,GbLPre,GbLPost),
-    gameBoardScore(S,GbLPost,_,_,_),
-    scoreMoves(Tail,Tail2,GbLPre).  
-
-%count the occupied cell for a certain column
-countOccCelInColumn(C,N, GbList) :- 
-    setof((R),occCellLG(R,C,GbList),Occ),length(Occ,N).
-
-aggregateHeight(GbList,Sum) :-
-    setof((C,N),countOccCelInColumn(C,N, GbList),H).
-
-highestColumn(GbList,High,Column) :-
-    setof((N,C),countOccCelInColumn(C,N, GbList),H),
-    sort(1,@>=,H,HSosrted),
-    nth0(0,HSosrted,(High,Column)).
