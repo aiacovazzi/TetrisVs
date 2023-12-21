@@ -1,5 +1,4 @@
-:- module(planner, [planner/5]).
-
+:- module(planner, [planner/6]).
 %generic A* planner
 %How to use it:
 %+Start and +Goal must be the start node and the goal node we want to reach.
@@ -10,17 +9,20 @@
 %   An higher score imply a most promising action.
 
 %-Plan is the actual computed sequence of action that allow to reach the goal node starting from the start node.
-planner(Start, Goal, Actions, Heuristic, Plan) :-
-    planner(Start, Goal, Actions, Heuristic, [Start], [], Plan).
 
-planner(Goal, Goal, _, _, _,Plan, Plan) :- !.
+%-PlanStory collect the whole searching story in order to use it as explanation.
+planner(Start, Goal, Actions, Heuristic, Plan, PlanStory) :-
+    planner(Start, Goal, Actions, Heuristic, [Start], [], Plan, [], PlanStory).
+
+planner(Goal, Goal, _, _, _,Plan, Plan, PlanStory, PlanStory) :- !.
 
 %nodes must have the following shape:
 %after the evaluation with the heuristic the node became:
 %[score,action]
 %all the evluated nodes are given in order from the most to the least promising
-planner(Start, Goal, Actions, Heuristic, VisitedNodes, TempPlan, Plan) :-
+planner(Start, Goal, Actions, Heuristic, VisitedNodes, TempPlan, Plan, TempPlanStory, PlanStory) :-
 	evaluateActions(Actions,Heuristic,Start,Goal,OrderedNodes),
+    append(TempPlanStory,[TempPlan],TempPlanStory1),
     member(Node, OrderedNodes), %take the first element in the list [[score,action]...], it's also the bactracking point if there is a fail taking the subsequent nodes.
     nth1(2, Node, Action), %take the action 
     %nth1(1, Node, Score), %take the score
@@ -29,7 +31,7 @@ planner(Start, Goal, Actions, Heuristic, VisitedNodes, TempPlan, Plan) :-
     \+member(Start1,VisitedNodes), %it fails if the goal has been already visited.
     append(VisitedNodes,[Start1],VisitedNodes1),
     append(TempPlan,[Action],TempPlan1),
-	planner(Start1, Goal, Actions, Heuristic, VisitedNodes1, TempPlan1, Plan).
+	planner(Start1, Goal, Actions, Heuristic, VisitedNodes1, TempPlan1, Plan, TempPlanStory1, PlanStory).
 
 evaluateActions(Actions, Heuristic, Input, Goal, OrderedActions) :-
 	evaluateActions(Actions, Heuristic, Input, Goal, [], OrderedActions).

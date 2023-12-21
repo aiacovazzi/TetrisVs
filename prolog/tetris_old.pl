@@ -718,10 +718,8 @@ retractIfFirstLevel(_,_,_).
 
 retractIfFirstLevel(0,SavedLevel) :-
      retractall(savedBranch(SavedLevel,_,_)),
-     write('deleted '),write(SavedLevel),nl,
+     %write('deleted '),write(SavedLevel),nl,
      !.
-
-
 
 %take successor from chached braches
 nextNodes(Level,Node, NextNodes) :-
@@ -848,55 +846,6 @@ serchPath(Start, Goal, Plan, PlanStory) :-
 %If a certain move is actually impossibile to reach (eg: trapped tetramino) the next move is considered.
 
 getPathOfBestMove(Player,Plan) :-
-    getStartGbL(GbL),
-    %createGameBoardList(GbL),
-    callMinMax(GbL,Player,BestNode),
-    tetraminos([T|_]),
-    firstShape(T,T1),
-    tetraminoSpawnX(X),
-    tetraminoSpawnY(Y),
-    Start = (T1,Y,X,GbL),
-    nth1(6,BestNode,(Tg,Rg,Cg)),    
-    Goal = (Tg,Rg,Cg,GbL),
-    %write(Start),nl,write(Goal),
-    serchPath(Goal, Start, RevPlan, _),
-    %write(PlanStory),
-    nth1(4,BestNode,NextGbL), 
-    retractall(startGbL(_)),
-    asserta(startGbL(NextGbL)),
-    reverse(RevPlan,Plan),
-    !.
-
-compareStartGbL() :-
-    getStartGbL(GbL1),
-    createGameBoardList(GbL2),
-    write(GbL1),nl,
-    write(GbL2),nl.
-
-getPathOfBestMove2(Player,Plan) :-
-    getStartGbL(GbL),
-    %createGameBoardList(GbL),
-    callMinMax(GbL,Player,BestNode),
-    tetraminos([T|_]),
-    firstShape(T,T1),
-    tetraminoSpawnX(X),
-    tetraminoSpawnY(Y),
-    Start = (T1,Y,X,GbL),
-    nth1(6,BestNode,(Tg,Rg,Cg)),    
-    Goal = (Tg,Rg,Cg,GbL),
-    %write(Start),nl,write(Goal),
-    serchPath(Goal, Start, RevPlan, _),
-    %write(PlanStory),
-    nth1(4,BestNode,NextGbL),
-    write(BestNode),nl, 
-    write(NextGbL),nl,
-    %retractall(startGbL(_)),
-    %asserta(startGbL(NextGbL)),
-    reverse(RevPlan,Plan),
-    !.
-
-getPathOfBestMove3(Player,Plan) :-
-    %getStartGbL(GbL),
     createGameBoardList(GbL),
     callMinMax(GbL,Player,BestNode),
     tetraminos([T|_]),
@@ -909,11 +858,6 @@ getPathOfBestMove3(Player,Plan) :-
     %write(Start),nl,write(Goal),
     serchPath(Goal, Start, RevPlan, _),
     %write(PlanStory),
-    nth1(4,BestNode,NextGbL),
-    write(BestNode),nl, 
-    write(NextGbL),nl,
-    %retractall(startGbL(_)),
-    %asserta(startGbL(NextGbL)),
     reverse(RevPlan,Plan),
     !.
 

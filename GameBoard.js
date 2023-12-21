@@ -185,7 +185,9 @@ export default class GameBoard {
                     this.#assignNextTetromino(this.turn);
                     this.#prepareTetraminosArray(this.turn);
                     this.gameOver = !(this.#checkCollision());
-                    //this.pause = true;
+
+                    //enable pause at each turn
+                    this.pause = true;
                     if(this.#aiEnabled && !this.gameOver){
                         if (this.#isAiTurn() ) {
                             this.#aiMapper.getSolution(this);
