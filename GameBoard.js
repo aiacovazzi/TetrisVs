@@ -12,8 +12,8 @@ export default class GameBoard {
     #startX = 4;
     #startY = 0;
 
-    #tetraX = 0;
-    #tetraY = 0;
+    tetraX = 0;
+    tetraY = 0;
 
     //true: p1
     //false: p2
@@ -64,14 +64,21 @@ export default class GameBoard {
 
     pause = false;
 
+    getAiSolution = false;
     #aiMapper = null;
     #aiEnabled = false;
     #readMoves = false;
     aiMoves = [];
-    tetraminoPositionsMatrix = [];
     currentAndNextTetramino = [];
     #aiTurns = [];
     aiPlayer = null;
+
+    #explainMode = true;
+    minMaxExplanation = null;
+    explanationText = null;
+    pauseExplain = null;
+
+    emergency = false;
 
     //all the keyCode here: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/keyCode
     #keydownP1 = event => {
@@ -118,6 +125,7 @@ export default class GameBoard {
         this.playerOne = option[1];
         this.playerTwo = option[2];
         this.#aiMapper = new MapperAI();
+        option[3] == 'Enabled' ? this.#explainMode = true: this.#explainMode = false;
 
         //assign the proper event listener for human player
         if (this.playerOne == 'Player') {
@@ -134,9 +142,7 @@ export default class GameBoard {
 
         //enable AI
         if (this.playerOne == 'AI' || this.playerTwo == 'AI') {
-            this.#aiEnabled = true;
-            this.playersNumber == 1 ? this.aiPlayer = 'maxmax' : this.aiPlayer = 'max'; 
-        
+            this.#aiEnabled = true;        
         }
 
         if (this.#aiEnabled && !this.gameOver) {
@@ -163,45 +169,58 @@ export default class GameBoard {
     #setSong(){
         this.playersNumber == 1 ? this.#theme = new Audio('sounds\\themealoop.mp3') : this.#theme = new Audio('sounds\\themebloop.mp3');
         this.#theme.loop = true;
+        this.#theme.volume = 0;
         this.#theme.play();
     }
 
     gameLoop() {
         if (!this.stopPlaying) {
             if (!this.pause) {
-                console.log(this.turn);
                 if (!this.#tetrominoMoving) {
                     this.#checkCompleteLine();
-                    this.#tetraX = this.#startX;
-                    this.#tetraY = this.#startY;
-                    this.#tetrominoMoving = true;
-
+                    this.#setEmergencyMode();
+                    if(this.#aiEnabled && !this.gameOver && !this.#isAiTurn()){
+                        this.#aiMapper.assertBoard(this);
+                    }
                     //switch turn when in VS mode, avoid it elsewhere
                     if (this.playersNumber == 2) {
                         this.turn = !this.turn;
                     } else {
                         this.turn = true;
                     }
+
+                    this.tetraX = this.#startX;
+                    this.tetraY = this.#startY;
+                   
                     this.#assignNextTetromino(this.turn);
-                    this.#prepareTetraminosArray(this.turn);
+                    
                     this.gameOver = !(this.#checkCollision());
-
-                    //enable pause at each turn
-                    this.pause = true;
-                    if(this.#aiEnabled && !this.gameOver){
-                        if (this.#isAiTurn() ) {
-                            this.#aiMapper.getSolution(this);
-
-                        }else{
-                            this.#aiMapper.assertBoard(this);
-                        }
+                    if(this.#aiEnabled && !this.gameOver && this.#isAiTurn()){
+                        this.#prepareTetraminosArray(this.turn);
+                        this.getAiSolution = true;
                     }
+
+                    this.#tetrominoMoving = true; 
                 } else {
-                    //then allows for player movement
-                    if (this.#isAiTurn()) {
+                    
+                    if(this.getAiSolution == true){
+                        this.playersNumber == 1 || this.emergency? this.aiPlayer = 'maxmax' : this.aiPlayer = 'max';
+                        //remove last tetromino if emergecy mode in vs mode
+                        this.aiPlayer == 'maxmax' && this.playersNumber == 2? this.currentAndNextTetramino.pop() : null; 
+                        console.log(this.aiPlayer +' '+this.currentAndNextTetramino);
+                        this.#aiMapper.getSolution(this);
+                        if(this.#explainMode){
+                            this.#explain();
+                        }
+                        this.getAiSolution = false;
+                    }
+
+                    if (this.#isAiTurn() && !this.pause) {
                         this.#readMoves = true;
                         this.#executeAiMoves();
-                    }
+                    }  
+
+                    //then allows for player movement
                     this.#move(false)
                 }
             }
@@ -236,11 +255,11 @@ export default class GameBoard {
         //in solo mode the game goes on forever
         if (this.playersNumber == 2) {
             if (this.level > this.numberOfLevels) {
-                if (this.scoreP1 > this.p2Wins) {
+                if (this.scoreP1 > this.scoreP2) {
                     this.p1Wins = true;
-                } else if (this.scoreP1 < this.p2Wins) {
+                } else if (this.scoreP1 < this.scoreP2) {
                     this.p2Wins = true;
-                } else if (this.scoreP1 == this.p2Wins) {
+                } else if (this.scoreP1 == this.scoreP2) {
                     this.draw = true;
                 }
             }
@@ -271,7 +290,7 @@ export default class GameBoard {
             }
         }
     }
-
+    
     #rotate() {
         this.tetromino.rotate();
     }
@@ -281,15 +300,15 @@ export default class GameBoard {
     }
 
     #left() {
-        this.#tetraX = this.#tetraX - 1;
+        this.tetraX = this.tetraX - 1;
     }
 
     #right() {
-        this.#tetraX = this.#tetraX + 1;
+        this.tetraX = this.tetraX + 1;
     }
 
     #down() {
-        this.#tetraY = this.#tetraY + 1;
+        this.tetraY = this.tetraY + 1;
         //check if down movement is legit
         //non legit down movement blocks the tetramino on the board
         if (!this.#checkCollision()) {
@@ -299,7 +318,7 @@ export default class GameBoard {
     }
 
     #undoDown() {
-        this.#tetraY = this.#tetraY - 1;
+        this.tetraY = this.tetraY - 1;
     }
 
     #move(forceDown) {
@@ -335,6 +354,7 @@ export default class GameBoard {
     #setPause() {
         if (this.#pressPause) {
             this.pause = !(this.pause);
+            this.pauseExplain = false;
             this.pause ? this.#theme.volume = 0.1 : this.#theme.volume = 1.0;
         }
         this.#pressPause = false;
@@ -359,8 +379,8 @@ export default class GameBoard {
                 //for all the cell in the tetramino matrix that actually contains a block
                 if (this.tetromino.matrix[i][j] == 1) {
                     //check if it will be displayed in a invalid position (out of screen or above another blocked tetramino)
-                    if ((i + this.#tetraY < 0) || (i + this.#tetraY >= this.gameBoardH) || (j + this.#tetraX < 0) || (j + this.#tetraX >= this.gameBoardW)
-                        || this.gameBoardMatrix[i + this.#tetraY][j + this.#tetraX] < 0) {
+                    if ((i + this.tetraY < 0) || (i + this.tetraY >= this.gameBoardH) || (j + this.tetraX < 0) || (j + this.tetraX >= this.gameBoardW)
+                        || this.gameBoardMatrix[i + this.tetraY][j + this.tetraX] < 0) {
                         movementOk = false;
                     }
                 }
@@ -375,17 +395,21 @@ export default class GameBoard {
     }
 
     #placeTetramino() {
-        this.tetraminoPositionsMatrix = [];
         let moving = -1;
+        let fulcrum = 1;
         if (this.#tetrominoMoving) {
             moving = 1;
         }
         for (let i = 0; i < 4; i++) {
             for (let j = 0; j < 4; j++) {
                 if (this.tetromino.matrix[i][j] == 1) {
-                    if ((i + this.#tetraY >= 0) && (i + this.#tetraY < this.gameBoardH) && (j + this.#tetraX >= 0) && (j + this.#tetraX < this.gameBoardW)) {
-                        this.gameBoardMatrix[i + this.#tetraY][j + this.#tetraX] = this.tetromino.matrix[i][j] * this.tetromino.color * moving;
-                        this.tetraminoPositionsMatrix.push([i + this.#tetraY, j + this.#tetraX]);
+                    if ((i + this.tetraY >= 0) && (i + this.tetraY < this.gameBoardH) && (j + this.tetraX >= 0) && (j + this.tetraX < this.gameBoardW)) {
+                        if(i == 1 && j == 1){
+                            fulcrum = 10;
+                        }else{
+                            fulcrum = 1;
+                        }
+                        this.gameBoardMatrix[i + this.tetraY][j + this.tetraX] = this.tetromino.matrix[i][j] * this.tetromino.color * moving * fulcrum;
                     }
                 }
             }
@@ -447,8 +471,6 @@ export default class GameBoard {
         if (this.#readMoves) {
             if (this.aiMoves.length) {
                 const move = this.aiMoves[0];
-                //console.log(this.aiMoves);
-
                 this.aiMoves.shift();
                 this.#aiAction(move,this.turn);
             } else {
@@ -476,6 +498,48 @@ export default class GameBoard {
                         turn ? this.#p1Down = true: this.#p2Down = true;
                         break;
                 }
+    }
 
+    #explain(){
+        this.pauseExplain = true;
+        this.pause = true;
+        console.clear();    
+        this.explanationText = 'The information about the tetrominoes position are given using the following structure: [TetrominoCode Row Column].\n\rThe tetromino code represent the kind of tetromino along with its rotation state as a number between 1 and 4, row and column represent the coordinate of the tetromino. The coordinate are relative to the fulcrum that is the darker square of each tetromino.\n\r';
+        this.explanationText = this.explanationText + 'To understand how to translate the tetramino code into the actual shape, you can refer the guide reachable using the following hyperlink: http://localhost:5500/images/tetrominoesExplained.png.\n\r\n\r'
+          
+        if(this.playersNumber == 1){
+            this.explanationText = this.explanationText + 'The next move is ['+this.minMaxExplanation[0][0].toUpperCase()+' '+this.minMaxExplanation[0][1]+' '+this.minMaxExplanation[0][2]+'] because it allows to reach, in the next step, ['+this.minMaxExplanation[1][0].toUpperCase()+' '+this.minMaxExplanation[1][1]+' '+this.minMaxExplanation[1][2]+'] that maximize the player advantage (this is true unless a better move will be available the next step).\n\r';
+        }else{
+            var player = null;
+            var adversary = null;
+            
+            if(this.turn){
+                player = 'P1';
+                adversary = 'P2';
+            }else{
+                player = 'P2';
+                adversary = 'P1';}
+
+            this.explanationText = this.explanationText + 'The next move for '+player+' is ['+this.minMaxExplanation[0][0].toUpperCase()+' '+this.minMaxExplanation[0][1]+' '+this.minMaxExplanation[0][2]+'], this because it allows, in two step, to reach ['+this.minMaxExplanation[2][0].toUpperCase()+' '+this.minMaxExplanation[2][1]+' '+this.minMaxExplanation[2][2]+'] that is the move that maximize '+player+' advantage considering that '+adversary+' has ['+this.minMaxExplanation[1][0].toUpperCase()+' '+this.minMaxExplanation[1][1]+' '+this.minMaxExplanation[1][2]+'] as best countermove.\n\r'
+        }
+
+        this.explanationText = this.explanationText + '\n\rThe path for reach the wanted position is: ['+this.aiMoves+'].\n\rTo see the path history along with the discarded path click the following hyperlink: http://localhost:7777/explainPath.'
+        console.log(this.explanationText);
+    }
+
+    #setEmergencyMode() {
+        let min = this.gameBoardH;
+        let nextColumn = false;
+        for (let i = 0; i < this.gameBoardH; i++) {
+            nextColumn = false;
+            for (let j = 0; j < this.gameBoardW && nextColumn == false; j++) { 
+
+                if(this.gameBoardMatrix[i][j] < 0 && i < min){
+                    min = i;
+                    nextColumn = true;
+                }
+            }
+        }
+        min <= 6? this.emergency = true : this.emergency =false;
     }
 }

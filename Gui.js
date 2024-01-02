@@ -9,35 +9,36 @@ let endText = '';
 let levelText = '';
 let endTextX = 0;
 let endTextY = 0;
-tetrisLogo.src = "images\\tetrisVS.png";
+tetrisLogo.src = 'images\\tetrisVS.png';
+
 export default function drawGameCanvas(ctx, canvas, gB){
     // Draw Canvas background
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // Draw gameboard
-    drawGameBoard(gB, ctx, 8, 8, 280, 460);
+    drawGameBoard(gB, ctx, 38, 8, 280, 460);
 
     ctx.strokeStyle = 'white';
     ctx.lineWidth = 1;
 
     //LOGO
-    ctx.drawImage(tetrisLogo, 300, 8, 210, 70);
+    ctx.drawImage(tetrisLogo, 330, 8, 210, 70);
 
     // Set font for score label text and draw for P1
     ctx.fillStyle = 'white';
     ctx.font = '12px Arial'; 
 
     //LEVEL
-    ctx.fillText("STAGE", 300, 98);
-    ctx.strokeRect(300, 107, 90, 24);  
+    ctx.fillText("STAGE", 330, 98);
+    ctx.strokeRect(330, 107, 90, 24);  
     if(!gB.stopPlaying){ 
         levelText = gB.level +" / "+(60-gB.sec);
     }else{
         levelText = 'END';
     }
 
-    ctx.fillText(levelText, 305, 125);  
+    ctx.fillText(levelText, 335, 125);  
 
     //TURN
     if(gB.playersNumber == 2){
@@ -47,95 +48,115 @@ export default function drawGameCanvas(ctx, canvas, gB){
             turn = 'P2';
         }
     
-    ctx.fillText("TURN", 400, 98);
-    ctx.strokeRect(400, 107, 90, 24);     
-    ctx.fillText(turn, 405, 125);   
+    ctx.fillText("TURN", 430, 98);
+    ctx.strokeRect(430, 107, 90, 24);     
+    ctx.fillText(turn, 435, 125);   
     } 
    
     //SCORES P1
-    ctx.fillText("SCORE P1", 300, 157);
-    ctx.strokeRect(300, 171, 90, 24);
-    ctx.fillText(gB.scoreP1, 305, 188);
+    ctx.fillText("SCORE P1", 330, 157);
+    ctx.strokeRect(330, 171, 90, 24);
+    ctx.fillText(gB.scoreP1, 335, 188);
     
-
     //NEXT P1
-    ctx.fillText("NEXT PIECE P1", 300, 217);
-    ctx.strokeRect(300, 231, 90, 90);
+    ctx.fillText("NEXT PIECE P1", 330, 217);
+    ctx.strokeRect(330, 231, 90, 90);
     nextTetrominoP1.src = 'images\\tretrominoShapes\\'+tetrominoDrawings[gB.p1NextTetrominoIndex];
-    ctx.drawImage(nextTetrominoP1, 310, 250, 70, 50);
+    ctx.drawImage(nextTetrominoP1, 340, 250, 70, 50);
     
     if(gB.playerOne == 'Player'){
         //CONTROLS P1
-        ctx.fillText("P1: CONTROLS", 300, 354);
-        ctx.strokeRect(300, 364, 90, 104);
+        ctx.fillText("P1: CONTROLS", 330, 354);
+        ctx.strokeRect(330, 364, 90, 104);
         ctx.font = '11.5px Arial';
-        ctx.fillText("A: Move Left", 305, 388);
-        ctx.fillText("D: Move Right", 305, 413);
-        ctx.fillText("S: Move Down", 305, 438);
-        ctx.fillText("SPACE: Rotate", 305, 463);
+        ctx.fillText("A: Move Left", 335, 388);
+        ctx.fillText("D: Move Right", 335, 413);
+        ctx.fillText("S: Move Down", 335, 438);
+        ctx.fillText("SPACE: Rotate", 335, 463);
     }else{
-        ctx.fillText("P1: AI", 300, 354);
+        ctx.fillText("P1: AI", 330, 354);
+        if(gB.getAiSolution && gB.turn){
+            ctx.font = '8.2px Arial';
+            ctx.fillText("Loading the next move...", 330, 375);
+            ctx.font = '11.5px Arial';
+        }
     }
     
     if(gB.playersNumber == 2){
         //SCORES P2
-        ctx.fillText("SCORE P2", 400, 157);
-        ctx.strokeRect(400, 171, 90, 24);
-        ctx.fillText(gB.scoreP2, 405, 188);
+        ctx.fillText("SCORE P2", 430, 157);
+        ctx.strokeRect(430, 171, 90, 24);
+        ctx.fillText(gB.scoreP2, 435, 188);
         //NEXT P2
-        ctx.fillText("NEXT PIECE P2", 400, 217);
-        ctx.strokeRect(400, 231, 90, 90);
+        ctx.fillText("NEXT PIECE P2", 430, 217);
+        ctx.strokeRect(430, 231, 90, 90);
         nextTetrominoP2.src = 'images\\tretrominoShapes\\'+tetrominoDrawings[gB.p2NextTetrominoIndex];
-        ctx.drawImage(nextTetrominoP2, 410, 250, 70, 50);
+        ctx.drawImage(nextTetrominoP2, 440, 250, 70, 50);
 
         if(gB.playerTwo == 'Player'){
             //CONTROLS P2
-            ctx.fillText("P2: CONTROLS", 400, 354);
-            ctx.strokeRect(400, 364, 90, 104);
+            ctx.fillText("P2: CONTROLS", 430, 354);
+            ctx.strokeRect(430, 364, 90, 104);
             ctx.font = '11.5px Arial';
-            ctx.fillText("←: Move Left", 405, 388);
-            ctx.fillText("→: Move Right", 405, 413);
-            ctx.fillText("↓: Move Down", 405, 438);
-            ctx.fillText("CTRL: Rotate", 405, 463);
+            ctx.fillText("←: Move Left", 435, 388);
+            ctx.fillText("→: Move Right", 435, 413);
+            ctx.fillText("↓: Move Down", 435, 438);
+            ctx.fillText("CTRL: Rotate", 435, 463);
             }else{
-                ctx.fillText("P2: AI", 400, 354);
+                ctx.fillText("P2: AI", 430, 354);
+                if(gB.getAiSolution && !gB.turn){
+                    ctx.font = '8.2px Arial';
+                    ctx.fillText("Loading the next move...", 430, 375);
+                    ctx.font = '11.5px Arial';
+                }
             }
             
     }
     //PAUSE
     if(gB.pause){
-        endText = "Pause";
-        endTextX = 195;
-        endTextY = 238;
+        if(gB.pauseExplain){
+            endText = "Read the ai explanation in the console log";
+            endTextX = 170;
+            endTextY = 233;
+        }else{
+            endText = "Pause";
+            endTextX = 225;
+            endTextY = 238;
+        }
     }
 
     //GAME ENDS
     if(gB.gameOver){
         endText = "Game Over!";
-        endTextX = 168;
+        endTextX = 198;
         endTextY = 238;
     }
     if(gB.p1Wins){
         endText = "Player One Wins!";
-        endTextX = 143;
+        endTextX = 173;
         endTextY = 238;
     }
     if(gB.p2Wins){
         endText = "Player Two Wins!";
-        endTextX = 143;
+        endTextX = 173;
         endTextY = 238;
     }
     if(gB.draw){
         endText = "It's A Draw!";
-        endTextX = 172;
+        endTextX = 202;
         endTextY = 238;
     }
     if(gB.stopPlaying || gB.pause){
         ctx.fillStyle = 'black';
         ctx.font = '22px Arial';
-        ctx.fillRect(128, 195, 200, 70);
+        if(gB.pauseExplain){
+            ctx.font = '9px Arial';
+        }
+        ctx.globalAlpha = 0.5;
+        ctx.fillRect(158, 195, 200, 70);
+        ctx.globalAlpha = 1;
         ctx.fillStyle = 'white';
-        ctx.strokeRect(128, 195, 200, 70);
+        ctx.strokeRect(158, 195, 200, 70);
         ctx.fillText(endText, endTextX, endTextY);
     }
     
@@ -146,19 +167,45 @@ function drawGameBoard(gB, ctx, x, y, width, height) {
     let yStep = height / gB.gameBoardH;
     let xCur = x;
     let yCur = y;
-    ctx.strokeStyle = 'white';
+    !gB.emergency? ctx.strokeStyle = 'white' : ctx.strokeStyle = 'red';
     ctx.strokeRect(x, y, width, height);
-    ctx.lineWidth = 0.1;
+    let fulcrum = 0;
     for (let i = 0; i < gB.gameBoardH; i++) {
+        writeNumber(xCur-20,yCur+15,i,ctx);
+        ctx.lineWidth = 0.1;
         for (let j = 0; j < gB.gameBoardW; j++) {
-
-            ctx.fillStyle = tetrominoColors[Math.abs(gB.gameBoardMatrix[i][j])];
-            ctx.fillRect(xCur, yCur, xStep, yStep);
-            ctx.strokeRect(xCur, yCur, xStep, yStep);
+            fulcrum = Math.abs(gB.gameBoardMatrix[i][j])/10;
+            if(fulcrum < 1){
+                ctx.fillStyle = tetrominoColors[Math.abs(gB.gameBoardMatrix[i][j])];
+                ctx.fillRect(xCur, yCur, xStep, yStep);
+                ctx.strokeRect(xCur, yCur, xStep, yStep);
+            }else{
+                ctx.globalAlpha = 0.9;
+                ctx.fillStyle = tetrominoColors[fulcrum];
+                ctx.fillRect(xCur, yCur, xStep, yStep);
+                ctx.strokeRect(xCur, yCur, xStep, yStep);
+                ctx.globalAlpha = 1;
+            }
             xCur = xCur + xStep;            
 
         }
         xCur = x;
         yCur = yCur + yStep;
     }
+
+    for (let j = 0; j < gB.gameBoardW; j++) {
+        writeNumber(xCur+10,yCur+15,j,ctx);
+        xCur = xCur + xStep;            
+
+    }
+
+}
+
+function writeNumber(x,y,number,ctx){
+    ctx.fillStyle = 'white';
+    ctx.font = '12px Arial'; 
+    //ctx.strokeStyle = 'white';
+    ctx.lineWidth = 1;
+   
+    ctx.fillText(number, x, y);
 }

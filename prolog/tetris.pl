@@ -1,17 +1,17 @@
-:- module(tetris, [getPathOfBestMove/2,writeGameBoard/0,computeNewGameBoard/0,occCell/2,start/1,tetraminos/1,nextNodes/3,evaluateNode/2,takeMove/4,evaluateMovement/2,rotate/2,left/2,right/2,down/2]).
+:- module(tetris, [startGbL/1,getPathOfBestMove/2,writeGameBoard/0,placePiece/3,start/1,tetraminos/1,nextNodes/3,evaluateNode/2,takeMove/4,evaluateMovement/2,rotate/2,left/2,right/2,down/2,explanation/2]).
 /*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 >To Do
--implementare il logger che spieghi le mosse
-    -pathfinding (esplica il percorso migliore trovato)
-    -minmax (analizza la sequenza di mosse che ha portato alla scelta e la spiega)
--ricerca mossa migliore (async) separata dalla ricerca del percorso (sync) per evitare blocchi e rendere fluido il gioco
--demo snake e tris
+    -understand why ai blocks in high column gameboard
+    -further informations explaining minmax
+    -demo snake e tris
+
+    -DOCUMENTAZIONE
+        -comparare cached e non cached
+        -provare ad ottimizzare euristica per vs mode
 
 >Problemi noti:
--ottimizzare euristica
--migliorare velocità minmax (salvare nodi minmax e riciclarli)
--perché il minmax si blocca a un certo punto? analizzare
-
+    -fix blocco minmax verso finale con un try up to mechanism
+    
 */
 :- use_module(library(lists)).
 :- use_module(planner).
@@ -21,69 +21,25 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Defining the game board properties and the occupied cells%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%gameboard dimensions
 gameBoardW(10).
 gameBoardH(20).
+
+
+%the starting position of the playing tetramino
 tetraminoSpawnX(5).
 tetraminoSpawnY(1).
-:-dynamic(occCell/2).
-%the starting position of the playing tetramino
 
 :-dynamic(tetraminos/1).
-
 :-dynamic(savedBranch/3).
 :-dynamic(startGbL/1).
+:-dynamic(explanation/2).
 
 start(T):-
-tetraminos(TList),
-append(TList,[T],TList2),
-retract(tetraminos(TList)),
-assert(tetraminos(TList2)).
-
-/*
-occCell(R,C) :-
-    http_session_data(occCell(R,C)),!.
-*/
-/*
-occCell(19,0).
-occCell(19,1).
-occCell(19,2).
-occCell(19,3).
-occCell(19,4).
-occCell(19,5).
-%occCell(19,0).
-occCell(19,7).
-occCell(19,8).
-occCell(19,9).
-
-occCell(18,0).
-occCell(18,1).
-occCell(18,2).
-occCell(18,3).
-occCell(18,4).
-
-occCell(17,0).
-occCell(17,1).
-occCell(17,2).
-occCell(17,3).
-occCell(17,4).
-occCell(17,5).
-
-occCell(16,0).
-occCell(16,1).
-occCell(16,2).
-occCell(16,3).
-occCell(16,4).
-occCell(16,5).
-
-occCell(15,0).
-occCell(15,1).
-occCell(15,2).
-occCell(15,3).
-occCell(15,4).
-occCell(15,5).
-occCell(15,6).
-occCell(15,7).
-*/
+    tetraminos(TList),
+    append(TList,[T],TList2),
+    retract(tetraminos(TList)),
+    assert(tetraminos(TList2)).
 
 %%%%%%%%%%%%%%%%%
 %Auxiliary rules%
@@ -126,11 +82,12 @@ gen(Cur, Top, Next):-
   gen(Cur1, Top, Next).
 %
 
-%Generate the list that contain all the occupied cells
-createGameBoardList(GbList) :-
-    setof(([R,C]),occCell(R,C),GbList),!.
+%Return the list that contain all the occupied cells
+getStartGbL(GbL) :-
+    startGbL(GbL),
+    !.
 
-createGameBoardList([]).	
+getStartGbL([]).	
 %
 
 %remove all the rows in the list indexed by rownumber
@@ -533,13 +490,12 @@ placePiece(T,R1,C1,LGbpre,LGbpost,NumberOfClearedRows) :-
 
 %Compute the new gameboard after the tetramino placing
 %If one or more rows are full perform removing and row shifting.
-computeNewGameBoard :-
-    createGameBoardList(GbListOld),
-    computeNewGameBoard(GbListOld,GbListNew,_),
-    retractall(occCell(_,_)),
-    assertList(GbListNew).
-
-computeNewGameBoard. %avoid fail if called when Gb is empty
+%Called by fronted is playert perform an action
+placePiece(T,R1,C1) :-
+    getStartGbL(GbListOld),
+    placePiece(T,R1,C1,GbListOld,GbListNew,_),
+    retractall(startGbL(_)),
+    asserta(startGbL(GbListNew)).
 
 computeNewGameBoard(GbListOld,GbListNew,NumberOfClearedRows) :-
     setof((R),clearedRow(R,GbListOld),ClearedRows),
@@ -600,7 +556,8 @@ countOccCelInColumn(C,N,GbList) :-
 topOccCelInColumn(GbList,RT) :- 
     gameBoardW(W),
     gen(0, W, C), 
-    findall((R),occCellLG(R,C,GbList),[RT|_]).
+    findall((R),occCellLG(R,C,GbList),Rows),
+    sort(Rows,[RT|_]).
 
 occCellForColumn(GbList,O4C) :-
     gameBoardW(W),
@@ -692,20 +649,16 @@ checkElegibility(Tn,R,C,GbList):-
     Goal = (Tn,R,C,GbList),
     serchPath(Goal, Start, _, _).
 
-callPlacePiece(_,_,_,[],[]).
+callPlacePiece(_,_,[],[]).
 
-callPlacePiece(Level,Tetraminos,GbList,[(T,R,C)|Taill],[[Tetraminos,GbListPost,ClRow,(T,R,C)]|Tail2]):-
+callPlacePiece(Tetraminos,GbList,[(T,R,C)|Taill],[[Tetraminos,GbListPost,ClRow,(T,R,C)]|Tail2]):-
     checkElegibility(T,R,C,GbList),
     placePiece(T,R,C,GbList,GbListPost,ClRow),
-    %save computed branch for recycle
-    rotation(Tb, T, _),
-    assertz(savedBranch(Level,[Tb,GbList],[GbListPost,ClRow,(T,R,C)])),
-    %write('saved'),write(savedBranch(Level,[Tb,GbList],[GbListPost,ClRow,(T,R,C)])),nl,
-    callPlacePiece(Level,Tetraminos,GbList,Taill,Tail2),
+    callPlacePiece(Tetraminos,GbList,Taill,Tail2),
     !.
 
-callPlacePiece(Level,Tetraminos,GbList,[_|Taill],Tail2):-
-    callPlacePiece(Level,Tetraminos,GbList,Taill,Tail2).
+callPlacePiece(Tetraminos,GbList,[_|Taill],Tail2):-
+    callPlacePiece(Tetraminos,GbList,Taill,Tail2).
 
 
 %Node: [Eval,Tetraminos,GbL,RowCleared, Move]
@@ -714,24 +667,6 @@ callPlacePiece(Level,Tetraminos,GbList,[_|Taill],Tail2):-
 %Move: the move [t,r,c] that allow to obatain the current node, added only when nextNodes is called
 %Eval: the evaluation of the node, added only when the heuristc is called, nextNodes will not see this one
 %RowCleared: store the number of row cleared by the move in order to pass it to the evaluation function
-retractIfFirstLevel(_,_,_).
-
-retractIfFirstLevel(0,SavedLevel) :-
-     retractall(savedBranch(SavedLevel,_,_)),
-     write('deleted '),write(SavedLevel),nl,
-     !.
-
-
-
-%take successor from chached braches
-nextNodes(Level,Node, NextNodes) :-
-    nth1(1, Node, Tetraminos),
-    nth1(2, Node, GbL),
-    nth0(Level, Tetraminos, Tb),
-    findall(([Tetraminos,GbListPost,ClRow,(T,R,C)]),(savedBranch(_,[Tb,GbL],[GbListPost,ClRow,(T,R,C)])),NextNodes),
-    NextNodes\==[],
-    %write('found '),write([Tb,GbL]),nl,
-    !.
 
 %compute branches if not cached previously
 nextNodes(Level,Node, NextNodes) :-
@@ -739,8 +674,7 @@ nextNodes(Level,Node, NextNodes) :-
     nth1(2, Node, GbL),
     nth0(Level, Tetraminos, T),
     findPossibleGoals(T,L,GbL),
-    %write('need '),write([T,GbL]),nl,
-    callPlacePiece(Level,Tetraminos,GbL,L,NextNodes),
+    callPlacePiece(Tetraminos,GbL,L,NextNodes),
     !.
 
 evaluateNode([Tetraminos,GbL,ClRow,(T,R,C)], [S,Tetraminos,GbL,ClRow,(T,R,C)]) :-
@@ -754,7 +688,7 @@ takeMove(Level,Depth,Node,[Move]):-
     nth1(5,Node,Move),
     !.
 
-%recursive case: when we collect the value from an inner node
+%recursive case: when we collect the value from non-leaf node
 takeMove(_,_,Node,[Move|CollectedMoves]):-
     nth1(2,Node,CollectedMoves),
     nth1(6,Node,Move).
@@ -844,12 +778,11 @@ serchPath(Start, Goal, Plan, PlanStory) :-
 
 %getPathOfBestMove search for the best move and then call the planner for the tetris path problem.
 %start and goal are inverted because I want to find the path starting from the goal and coming back to the start.
-%This allow to deal easily with particulare cases like slide or t-spin.
+%This allow to deal easily with particular cases like slide or t-spin.
 %If a certain move is actually impossibile to reach (eg: trapped tetramino) the next move is considered.
 
 getPathOfBestMove(Player,Plan) :-
     getStartGbL(GbL),
-    %createGameBoardList(GbL),
     callMinMax(GbL,Player,BestNode),
     tetraminos([T|_]),
     firstShape(T,T1),
@@ -858,70 +791,16 @@ getPathOfBestMove(Player,Plan) :-
     Start = (T1,Y,X,GbL),
     nth1(6,BestNode,(Tg,Rg,Cg)),    
     Goal = (Tg,Rg,Cg,GbL),
-    %write(Start),nl,write(Goal),
-    serchPath(Goal, Start, RevPlan, _),
-    %write(PlanStory),
+    serchPath(Goal, Start, RevPlan, PathStory),
     nth1(4,BestNode,NextGbL), 
     retractall(startGbL(_)),
     asserta(startGbL(NextGbL)),
     reverse(RevPlan,Plan),
+    nth1(2,BestNode,NodeStory), 
+    append([(Tg,Rg,Cg)],NodeStory,FullNodeStory),
+    retractall(explanation),
+    asserta(explanation(FullNodeStory,PathStory)),
     !.
-
-compareStartGbL() :-
-    getStartGbL(GbL1),
-    createGameBoardList(GbL2),
-    write(GbL1),nl,
-    write(GbL2),nl.
-
-getPathOfBestMove2(Player,Plan) :-
-    getStartGbL(GbL),
-    %createGameBoardList(GbL),
-    callMinMax(GbL,Player,BestNode),
-    tetraminos([T|_]),
-    firstShape(T,T1),
-    tetraminoSpawnX(X),
-    tetraminoSpawnY(Y),
-    Start = (T1,Y,X,GbL),
-    nth1(6,BestNode,(Tg,Rg,Cg)),    
-    Goal = (Tg,Rg,Cg,GbL),
-    %write(Start),nl,write(Goal),
-    serchPath(Goal, Start, RevPlan, _),
-    %write(PlanStory),
-    nth1(4,BestNode,NextGbL),
-    write(BestNode),nl, 
-    write(NextGbL),nl,
-    %retractall(startGbL(_)),
-    %asserta(startGbL(NextGbL)),
-    reverse(RevPlan,Plan),
-    !.
-
-getPathOfBestMove3(Player,Plan) :-
-    %getStartGbL(GbL),
-    createGameBoardList(GbL),
-    callMinMax(GbL,Player,BestNode),
-    tetraminos([T|_]),
-    firstShape(T,T1),
-    tetraminoSpawnX(X),
-    tetraminoSpawnY(Y),
-    Start = (T1,Y,X,GbL),
-    nth1(6,BestNode,(Tg,Rg,Cg)),    
-    Goal = (Tg,Rg,Cg,GbL),
-    %write(Start),nl,write(Goal),
-    serchPath(Goal, Start, RevPlan, _),
-    %write(PlanStory),
-    nth1(4,BestNode,NextGbL),
-    write(BestNode),nl, 
-    write(NextGbL),nl,
-    %retractall(startGbL(_)),
-    %asserta(startGbL(NextGbL)),
-    reverse(RevPlan,Plan),
-    !.
-
-getStartGbL(GbL) :-
-    startGbL(GbL),
-    !.
-
-getStartGbL([]).
 %///////////////////////
 
 %%%%%%%%%%%%%%%%%%%%%%%%
@@ -930,25 +809,32 @@ getStartGbL([]).
 %write game board for debugging
 %call it using: ?- writeGameBoard.
 
-writeGameBoard :-
-	writeGameBoard(0,0),
-    nl,
+getTetraminos(Ts):-
     tetraminos(Ts),
+    !.
+
+getTetraminos([]).
+
+writeGameBoard :-
+    getStartGbL(GbL),
+	writeGameBoard(0,0,GbL),
+    nl,
+    getTetraminos(Ts),
     write('tetraminos: '),
     write(Ts).
 
-writeGameBoard(R,C) :- 
+writeGameBoard(R,C,_) :- 
     gameBoardH(R),
     nl,
     write([--]),
     writeColNumbers(C).
 
-writeGameBoard(R,C) :- 
+writeGameBoard(R,C,GbL) :- 
     nl, 
     writeRowNumber(R),
-    writeRow(R,C), 
+    writeRow(R,C,GbL), 
     R1 is R + 1, 
-    writeGameBoard(R1,C),
+    writeGameBoard(R1,C,GbL),
     !.
 
 writeRowNumber(R):-
@@ -963,20 +849,20 @@ writeRowNumber(R):-
     write(']'),
     !.
 
-writeRow(_,C) :- 
+writeRow(_,C,_) :- 
     gameBoardW(C).
 
-writeRow(R,C) :- 
-    occCell(R,C), 
+writeRow(R,C,GbL) :- 
+    occCellL(R,C,GbL), 
     write([■]), 
     C1 is C + 1, 
-    writeRow(R,C1),
+    writeRow(R,C1,GbL),
     !.
 
-writeRow(R,C) :- 
+writeRow(R,C,GbL) :- 
     write([□]),
     C1 is C + 1,
-    writeRow(R,C1),
+    writeRow(R,C1,GbL),
     !.
 
 writeColNumbers(C) :- 

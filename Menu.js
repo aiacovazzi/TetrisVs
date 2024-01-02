@@ -2,7 +2,12 @@ let tetrisLogo = new Image(260, 90);
 tetrisLogo.src = "images\\tetrisVS.png";
 let tetrisBuilding = new Image(280, 280);
 tetrisBuilding.src = "images\\building.png";
-let gameMode = ['Solo', 'Solo AI', 'Vs Player', 'Vs AI', 'AI vs AI'];
+let aiExpEnabled = '◀ AI explanation enabled ▶';
+let aiExpDisabled = '◀ AI explanation disabled ▶';
+let aiExp = aiExpEnabled;
+let optionAiExp = 'Enabled';
+
+let gameMode = [aiExp,'Solo', 'Solo AI', 'Vs Player', 'Vs AI', 'AI vs AI'];
 let options = null;
 let index = 0;
 let keydown = event => {
@@ -19,17 +24,27 @@ let keydown = event => {
         }
     }
 
+    if ((event.code == "ArrowRight" || event.code == "ArrowLeft" || event.code == "KeyA" || event.code == "KeyD") && index == 0)  {
+        if(gameMode[0] == aiExpEnabled){
+        gameMode[0] = aiExpDisabled;
+        optionAiExp = 'Disabled';
+        }else{
+            gameMode[0] = aiExpEnabled;
+            optionAiExp = 'Enabled';
+        }
+    }
+
     if (event.code == "Enter" || event.code == "Space") {
-        if(index == 0){
-            options = [1,'Player','None'];
-        }else if(index == 1){
-            options = [1,'AI','None'];
+        if(index == 1){
+            options = [1,'Player','None',optionAiExp];
         }else if(index == 2){
-            options = [2,'Player','Player'];
+            options = [1,'AI','None',optionAiExp];
         }else if(index == 3){
-            options = [2,'Player','AI'];
+            options = [2,'Player','Player',optionAiExp];
         }else if(index == 4){
-            options = [2,'AI','AI'];
+            options = [2,'Player','AI',optionAiExp];
+        }else if(index == 5){
+            options = [2,'AI','AI',optionAiExp];
         }
     }
 
@@ -41,18 +56,18 @@ export default function drawMenuCanvas(ctx, canvas){
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     //LOGO
-    ctx.drawImage(tetrisBuilding, 240, 212, 260, 260);
-    ctx.drawImage(tetrisLogo, 142, 90, 260, 90);
+    ctx.drawImage(tetrisBuilding, 285, 242, 260, 260);
+    ctx.drawImage(tetrisLogo, 172, 90, 260, 90);
 
     ctx.fillStyle = 'white';
     ctx.font = '16px Arial'; 
     ctx.strokeStyle = 'white';
     ctx.lineWidth = 1;
    
-    ctx.fillText("Select the game mode", 175, 185);
+    ctx.fillText("Select the game mode", 205, 185);
 
-    let x = 175;
-    let y = 220;
+    let x = 205;
+    let y = 250;
     for (let i = 0; i < gameMode.length; i++) {
         ctx.font = '14px Arial'; 
         ctx.fillStyle = 'white';

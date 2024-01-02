@@ -13,22 +13,17 @@ export default class MapperAI {
         }
      }
 
-    #assertOccupiedCell(gB) {
+    #assertPlacedTetramino(gB) {
         var apiPath;
-        for (let i = 0; i < gB.tetraminoPositionsMatrix.length; i++) {
-            apiPath = 'ocell/' + gB.tetraminoPositionsMatrix[i][0] + '/' + gB.tetraminoPositionsMatrix[i][1];
-            console.log(apiPath);
-            this.#callApi(apiPath, 'GET', null);
-            }
-        this.#callApi('newgb', 'GET', null);
+        apiPath = 'put/' + this.#possibleShape[gB.tetromino.color-1] + (gB.tetromino.indexPosition+1) + '/'+ (gB.tetraY+1) + '/' +(gB.tetraX+1)
+        this.#callApi(apiPath, 'GET', null);
     }
 
-    #assertTetraminos(gB) {
+    #assertStartingTetraminos(gB) {
         this.#callApi('resetstart', 'GET', null);
         var apiPath;
         for (let i = 0; i < gB.currentAndNextTetramino.length; i++) {
             apiPath = 'start/' + this.#possibleShape[gB.currentAndNextTetramino[i]-1];
-            console.log(apiPath);
             this.#callApi(apiPath, 'GET', null);
             }
     }
@@ -38,16 +33,21 @@ export default class MapperAI {
         gB.aiMoves = JSON.parse(data);
     }
 
+    #getMinMaxExplanation(gB) {
+        const data = this.#callApi('explainMove', 'GET', null);
+        gB.minMaxExplanation = JSON.parse(data);
+    }
+
     getSolution(gB) {
         gB.aiMoves = [];
-        this.#assertOccupiedCell(gB);
-        this.#assertTetraminos(gB);
+        this.#assertStartingTetraminos(gB);
         this.#getPath(gB);
+        this.#getMinMaxExplanation(gB);
     }
 
     assertBoard(gB) {
-        this.#assertOccupiedCell(gB);
-        this.#assertTetraminos(gB);
+        this.#assertPlacedTetramino(gB);
+        this.#assertStartingTetraminos(gB);
     }
 
     reset(){
