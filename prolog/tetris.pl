@@ -1,17 +1,13 @@
-:- module(tetris, [startGbL/1,getPathOfBestMove/2,writeGameBoard/0,placePiece/3,start/1,tetraminos/1,nextNodes/3,evaluateNode/2,takeMove/4,evaluateMovement/2,rotate/2,left/2,right/2,down/2,explanation/2]).
+:- module(tetris, [startGbL/1,getPathOfBestMove/2,writeGameBoard/0,placePiece/3,start/1,tetraminos/1,nextNodes/3,evaluateNode/2,takeMove/4,evaluateMovement/2,checkGoal/2,rotate/2,left/2,right/2,down/2,explanation/2]).
 /*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 >To Do
-    -understand why ai blocks in high column gameboard
-    -further informations explaining minmax
-    -demo snake e tris
-
+    -ottimizzare euristica minmax - idea: contare blocchi vuoti ma chiusi che se riempiti darebbero vantaggio al giocatore
+    -spiegazione diversa in emergency mode
+    -ulteriori informazioni nello spiegare minmax
+    -mixmax fail se ultima mossa, vedi fix del tris
+    -ottimizzare planner col max retry al posto del limite temporale
     -DOCUMENTAZIONE
-        -comparare cached e non cached
-        -provare ad ottimizzare euristica per vs mode
-
->Problemi noti:
-    -fix blocco minmax verso finale con un try up to mechanism
-    
+        -comparare cached e non cached?
 */
 :- use_module(library(lists)).
 :- use_module(planner).
@@ -548,7 +544,6 @@ assertList([[R,C]|T]) :-
 %%%%%%%%%%%%%%%%%%%%%
 %GameBoard Evaluator%
 %%%%%%%%%%%%%%%%%%%%%
-
 %count the occupied cell for a certain column
 countOccCelInColumn(C,N,GbList) :- 
     setof((R),occCellLG(R,C,GbList),Occ),length(Occ,N).
@@ -645,21 +640,21 @@ checkElegibility(Tn,R,C,GbList):-
     firstShape(T,T1),
     tetraminoSpawnX(X),
     tetraminoSpawnY(Y),
-    Start = (T1,Y,X,GbList),    
+    Start = (T1,Y,X,GbList),  
+    placePiece(T1,Y,X,GbList,_,_),  
     Goal = (Tn,R,C,GbList),
     serchPath(Goal, Start, _, _).
 
 callPlacePiece(_,_,[],[]).
 
 callPlacePiece(Tetraminos,GbList,[(T,R,C)|Taill],[[Tetraminos,GbListPost,ClRow,(T,R,C)]|Tail2]):-
-    checkElegibility(T,R,C,GbList),
+    catch(call_with_time_limit(2, checkElegibility(T,R,C,GbList)),time_limit_exceeded,fail),
     placePiece(T,R,C,GbList,GbListPost,ClRow),
     callPlacePiece(Tetraminos,GbList,Taill,Tail2),
     !.
 
 callPlacePiece(Tetraminos,GbList,[_|Taill],Tail2):-
     callPlacePiece(Tetraminos,GbList,Taill,Tail2).
-
 
 %Node: [Eval,Tetraminos,GbL,RowCleared, Move]
 %Tetraminos: a list of tetraminos
@@ -771,10 +766,13 @@ diff(_,_,Diff) :-
     Diff is 1,
     !.
 
+checkGoal(Node,Node).
+
 serchPath(Start, Goal, Plan, PlanStory) :-
     setof(A, action(A), Actions),
     Heuristic=evaluateMovement, 
-    planner(Start, Goal, Actions, Heuristic, Plan, PlanStory).
+    GoalChecker=checkGoal,
+    planner(Start, Goal, Actions, Heuristic, Plan, PlanStory,GoalChecker).
 
 %getPathOfBestMove search for the best move and then call the planner for the tetris path problem.
 %start and goal are inverted because I want to find the path starting from the goal and coming back to the start.
@@ -783,11 +781,12 @@ serchPath(Start, Goal, Plan, PlanStory) :-
 
 getPathOfBestMove(Player,Plan) :-
     getStartGbL(GbL),
-    callMinMax(GbL,Player,BestNode),
     tetraminos([T|_]),
     firstShape(T,T1),
     tetraminoSpawnX(X),
-    tetraminoSpawnY(Y),
+    tetraminoSpawnY(Y),!,
+    placePiece(T1,Y,X,GbL,_,_),  %avoid to start the whole algorithm if the piece cannot be placed, gameover condition if failed
+    callMinMax(GbL,Player,BestNode),
     Start = (T1,Y,X,GbL),
     nth1(6,BestNode,(Tg,Rg,Cg)),    
     Goal = (Tg,Rg,Cg,GbL),

@@ -1,5 +1,5 @@
-:- module(planner, [planner/6]).
-%generic A* planner
+:- module(planner, [planner/7]).
+%generic Best-First planner
 %How to use it:
 %+Start and +Goal must be the start node and the goal node we want to reach.
 
@@ -11,16 +11,17 @@
 %-Plan is the actual computed sequence of action that allow to reach the goal node starting from the start node.
 
 %-PlanStory collect the whole searching story in order to use it as explanation.
-planner(Start, Goal, Actions, Heuristic, Plan, PlanStory) :-
-    planner(Start, Goal, Actions, Heuristic, [Start], [], Plan, [], PlanStory).
+planner(Start, Goal, Actions, Heuristic, Plan, PlanStory, GoalChecker) :-
+    planner(Start, Goal, Actions, Heuristic, [Start], [], Plan, [], PlanStory, GoalChecker).
 
-planner(Goal, Goal, _, _, _,Plan, Plan, PlanStory, PlanStory) :- !.
+planner(Start, Goal, _, _, _,Plan, Plan, PlanStory, PlanStory, GoalChecker) :- 
+    call(GoalChecker,Start,Goal),!.
 
 %nodes must have the following shape:
 %after the evaluation with the heuristic the node became:
 %[score,action]
 %all the evluated nodes are given in order from the most to the least promising
-planner(Start, Goal, Actions, Heuristic, VisitedNodes, TempPlan, Plan, TempPlanStory, PlanStory) :-
+planner(Start, Goal, Actions, Heuristic, VisitedNodes, TempPlan, Plan, TempPlanStory, PlanStory, GoalChecker) :-
 	evaluateActions(Actions,Heuristic,Start,Goal,OrderedNodes),
     append(TempPlanStory,[TempPlan],TempPlanStory1),
     member(Node, OrderedNodes), %take the first element in the list [[score,action]...], it's also the bactracking point if there is a fail taking the subsequent nodes.
@@ -31,7 +32,7 @@ planner(Start, Goal, Actions, Heuristic, VisitedNodes, TempPlan, Plan, TempPlanS
     \+member(Start1,VisitedNodes), %it fails if the goal has been already visited.
     append(VisitedNodes,[Start1],VisitedNodes1),
     append(TempPlan,[Action],TempPlan1),
-	planner(Start1, Goal, Actions, Heuristic, VisitedNodes1, TempPlan1, Plan, TempPlanStory1, PlanStory).
+	planner(Start1, Goal, Actions, Heuristic, VisitedNodes1, TempPlan1, Plan, TempPlanStory1, PlanStory, GoalChecker).
 
 evaluateActions(Actions, Heuristic, Input, Goal, OrderedActions) :-
 	evaluateActions(Actions, Heuristic, Input, Goal, [], OrderedActions).

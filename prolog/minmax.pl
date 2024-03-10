@@ -10,7 +10,10 @@ operator(maxmax,'@>=').
 
 %minmax recursive case
 minmax(CurrentNode, NextNodesGenerator, Heuristic, MoveTaker, Level, Depth, Alpha, Beta, CurrentNodeEvaluated,  Player) :-
+    %nl,write('Current Node: '),write(CurrentNode),
+    %nl,write('Level: '),write(Level),
     call(NextNodesGenerator,Level,CurrentNode,NextNodes),
+    %nl,write('NextNodes: '),write(NextNodes),
     minmax1(NextNodes,CurrentNode, NextNodesGenerator, Heuristic, MoveTaker, Level, Depth, Alpha, Beta, CurrentNodeEvaluated,  Player),
     !.
 
@@ -48,10 +51,13 @@ getBest(MoveTaker,Level,Depth,CurrentNode,BestNode,CurrentNodeEvaluated) :-
     nth1(1,BestNode,Evaluation),
     call(MoveTaker,Level,Depth,BestNode,Moves),
     append([Evaluation,Moves],CurrentNode,CurrentNodeEvaluated),
+    %nl,write('takeMove:'),write(BestNode),write(Moves),write(CurrentNodeEvaluated),
     !. 
 
 evaluate(Heuristic,CurrentNode,CurrentNodeEvaluated) :-
+    %nl,write('Evaluate: '),write(CurrentNode),
     call(Heuristic,CurrentNode,CurrentNodeEvaluated).
+    %nl,write('EvaluatedNode: '),write(CurrentNodeEvaluated).
 
 %AlphBeta pruning disabled for maxmax mode
 updateAlphaBeta(maxmax,_,Alpha,Beta,NextNodes,Alpha,Beta,NextNodes).

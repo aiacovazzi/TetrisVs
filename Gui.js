@@ -61,7 +61,9 @@ export default function drawGameCanvas(ctx, canvas, gB){
     //NEXT P1
     ctx.fillText("NEXT PIECE P1", 330, 217);
     ctx.strokeRect(330, 231, 90, 90);
-    nextTetrominoP1.src = 'images\\tretrominoShapes\\'+tetrominoDrawings[gB.p1NextTetrominoIndex];
+    if(!gB.getAiSolution){
+        nextTetrominoP1.src = 'images\\tretrominoShapes\\'+tetrominoDrawings[gB.p1NextTetrominoIndex];
+    }
     ctx.drawImage(nextTetrominoP1, 340, 250, 70, 50);
     
     if(gB.playerOne == 'Player'){
@@ -90,7 +92,9 @@ export default function drawGameCanvas(ctx, canvas, gB){
         //NEXT P2
         ctx.fillText("NEXT PIECE P2", 430, 217);
         ctx.strokeRect(430, 231, 90, 90);
-        nextTetrominoP2.src = 'images\\tretrominoShapes\\'+tetrominoDrawings[gB.p2NextTetrominoIndex];
+        if(!gB.getAiSolution){
+            nextTetrominoP2.src = 'images\\tretrominoShapes\\'+tetrominoDrawings[gB.p2NextTetrominoIndex];
+        }
         ctx.drawImage(nextTetrominoP2, 440, 250, 70, 50);
 
         if(gB.playerTwo == 'Player'){
