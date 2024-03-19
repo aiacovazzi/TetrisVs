@@ -1,13 +1,35 @@
-:- module(tetris, [startGbL/1,getPathOfBestMove/2,writeGameBoard/0,placePiece/3,start/1,tetraminos/1,nextNodes/3,evaluateNode/2,takeMove/4,evaluateMovement/2,checkGoal/2,rotate/2,left/2,right/2,down/2,explanation/2]).
+:- module(tetris, [startGbL/1,getPathOfBestMove/2,writeGameBoard/0,placePiece/3,start/1,tetraminos/1,nextNodes/4,evaluateNode/3,takeMove/2,evaluateMovement/2,checkGoal/2,rotate/2,left/2,right/2,down/2,explanation/3]).
 /*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 >To Do
-    -ottimizzare euristica minmax - idea: contare blocchi vuoti ma chiusi che se riempiti darebbero vantaggio al giocatore
-    -spiegazione diversa in emergency mode
-    -ulteriori informazioni nello spiegare minmax
-    -mixmax fail se ultima mossa, vedi fix del tris
-    -ottimizzare planner col max retry al posto del limite temporale
-    -DOCUMENTAZIONE
-        -comparare cached e non cached?
+    -DOCUMENTAZIONE Tetris VS
+    Titolo:
+    Tetris Vs - A Case Study on Game Playing Agents in Prolog
+		-introduzione (piccola storia di tetris, perché tetris, anticipazione sul resto del paper)
+		-descrizione del gioco e le sue modalità, riferimento al set di regole utilizzate
+		-rappresentazione kb
+		-euristica di valutazione mosse
+		-generazione strategia
+			-1p
+			-2p
+		-implementazione del min max
+            -come viene utilizzato dal tetris 1p e 2p
+		-implementazione del best first planner
+            -come viene utilizzato dal tetris
+		-implementazione del ws per comunicare col FE
+		-implementazione explainability
+		-criticità e sviluppi futuri
+            -no real time
+            -lentezza 2p
+                -possibile soluzione: montecarlo tree search
+            -non accuratezza euristica 2p
+                -possibile soluzione: algoritmo genetico per individuare pesi
+		
+		-appendice a tris
+		-appendice b snake
+
+    -Mini manuale d'uso
+        -installazione
+        -comandi
 */
 :- use_module(library(lists)).
 :- use_module(planner).
@@ -21,7 +43,6 @@
 gameBoardW(10).
 gameBoardH(20).
 
-
 %the starting position of the playing tetramino
 tetraminoSpawnX(5).
 tetraminoSpawnY(1).
@@ -29,7 +50,7 @@ tetraminoSpawnY(1).
 :-dynamic(tetraminos/1).
 :-dynamic(savedBranch/3).
 :-dynamic(startGbL/1).
-:-dynamic(explanation/2).
+:-dynamic(explanation/3).
 
 start(T):-
     tetraminos(TList),
@@ -617,7 +638,7 @@ sumEntropyOfGameBoard(SumEnt,GbL) :-
     findall((Ent),entropyOfRow(_,Ent,GbL),EntropyXRow),
     sum_list(EntropyXRow,SumEnt).
 
-gameBoardScore(GbList,AggregateHeight,RowCleared,Holes,Bumpiness,Score) :-
+gameBoardScore1(GbList,AggregateHeight,RowCleared,Holes,Bumpiness,SumEnt,Score) :-
     occCellForColumn(GbList,O4C),
     heightForColumn(GbList,H4C),
     %AggregateHeight
@@ -630,6 +651,19 @@ gameBoardScore(GbList,AggregateHeight,RowCleared,Holes,Bumpiness,Score) :-
     E is -10,
     sumEntropyOfGameBoard(SumEnt,GbList),
     Score is E*SumEnt - AggregateHeight - Holes - Bumpiness + RowCleared.
+
+gameBoardScore('max',GbList,AggregateHeight,RowCleared,Holes,Bumpiness,SumEnt,Score) :-
+    RowCleared > 0,
+    gameBoardScore1(GbList,AggregateHeight,RowCleared,Holes,Bumpiness,SumEnt,Score1),
+    Score is -1*1000*RowCleared+Score1.
+
+gameBoardScore('min',GbList,AggregateHeight,RowCleared,Holes,Bumpiness,SumEnt,Score) :-
+    RowCleared > 0,
+    gameBoardScore1(GbList,AggregateHeight,RowCleared,Holes,Bumpiness,SumEnt,Score1),
+    Score is 1000*RowCleared+Score1.
+
+gameBoardScore(_,GbList,AggregateHeight,RowCleared,Holes,Bumpiness,SumEnt,Score) :-
+    gameBoardScore1(GbList,AggregateHeight,RowCleared,Holes,Bumpiness,SumEnt,Score).
 %////////////////////////////////////////    
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -648,7 +682,7 @@ checkElegibility(Tn,R,C,GbList):-
 callPlacePiece(_,_,[],[]).
 
 callPlacePiece(Tetraminos,GbList,[(T,R,C)|Taill],[[Tetraminos,GbListPost,ClRow,(T,R,C)]|Tail2]):-
-    catch(call_with_time_limit(2, checkElegibility(T,R,C,GbList)),time_limit_exceeded,fail),
+    catch(call_with_time_limit(0.5, checkElegibility(T,R,C,GbList)),time_limit_exceeded,fail),
     placePiece(T,R,C,GbList,GbListPost,ClRow),
     callPlacePiece(Tetraminos,GbList,Taill,Tail2),
     !.
@@ -663,31 +697,43 @@ callPlacePiece(Tetraminos,GbList,[_|Taill],Tail2):-
 %Eval: the evaluation of the node, added only when the heuristc is called, nextNodes will not see this one
 %RowCleared: store the number of row cleared by the move in order to pass it to the evaluation function
 
-%compute branches if not cached previously
-nextNodes(Level,Node, NextNodes) :-
+%do not generate any other move if checking a row-clear move in vs mode.
+%it's like "win" from the AI perspective.
+
+/*nextNodes1('max', _, _, _, ClRow, []) :- 
+    ClRow > 0.*/
+
+nextNodes1(_,Tetraminos,GbL,T, _, NextNodes) :-
+    findPossibleGoals(T,L,GbL),
+    callPlacePiece(Tetraminos,GbL,L,NextNodes).
+
+nextNodes(Player,_,Node,[]) :-
+    Player \= 'maxmax',
+    nth1(3, Node, ClRow),
+    ClRow > 0.
+
+nextNodes(Player,Level,Node,NextNodes) :-
     nth1(1, Node, Tetraminos),
     nth1(2, Node, GbL),
     nth0(Level, Tetraminos, T),
-    findPossibleGoals(T,L,GbL),
-    callPlacePiece(Tetraminos,GbL,L,NextNodes),
-    !.
+    nth1(3, Node, ClRow),
+    nextNodes1(Player,Tetraminos,GbL,T,ClRow, NextNodes).
 
-evaluateNode([Tetraminos,GbL,ClRow,(T,R,C)], [S,Tetraminos,GbL,ClRow,(T,R,C)]) :-
-    gameBoardScore(GbL,_,ClRow,_,_,S).
+evaluateNode(Player,[Tetraminos,GbL,ClRow,(T,R,C)], [S,Tetraminos,GbL,(AggHeight,ClRow,Holes,Bump,Ent),(T,R,C)]) :-
+    gameBoardScore(Player,GbL,AggHeight,ClRow,Holes,Bump,Ent,S),
+    !.
 
 %allows to remember the move chain
 %base case: when we collect the value from a leaf
-takeMove(Level,Depth,Node,[Move]):-
-    CheckDepth is Depth - 1,
-    Level = CheckDepth,
-    nth1(5,Node,Move),
-    !.
+takeMove(Node,[Move,ScoreComponent]):-
+    length(Node,5),
+    nth1(4,Node,ScoreComponent),
+    nth1(5,Node,Move).
 
 %recursive case: when we collect the value from non-leaf node
-takeMove(_,_,Node,[Move|CollectedMoves]):-
+takeMove(Node,[Move|CollectedMoves]):-
     nth1(2,Node,CollectedMoves),
     nth1(6,Node,Move).
-%
 
 callMinMax(GbL, Player, BestNode) :-
     tetraminos(T),
@@ -772,7 +818,7 @@ serchPath(Start, Goal, Plan, PlanStory) :-
     setof(A, action(A), Actions),
     Heuristic=evaluateMovement, 
     GoalChecker=checkGoal,
-    planner(Start, Goal, Actions, Heuristic, Plan, PlanStory,GoalChecker).
+    planner(Start, Goal, Actions, Heuristic, Plan, PlanStory, GoalChecker).
 
 %getPathOfBestMove search for the best move and then call the planner for the tetris path problem.
 %start and goal are inverted because I want to find the path starting from the goal and coming back to the start.
@@ -788,17 +834,49 @@ getPathOfBestMove(Player,Plan) :-
     placePiece(T1,Y,X,GbL,_,_),  %avoid to start the whole algorithm if the piece cannot be placed, gameover condition if failed
     callMinMax(GbL,Player,BestNode),
     Start = (T1,Y,X,GbL),
-    nth1(6,BestNode,(Tg,Rg,Cg)),    
+    last(BestNode,(Tg,Rg,Cg)),    
     Goal = (Tg,Rg,Cg,GbL),
     serchPath(Goal, Start, RevPlan, PathStory),
+    reverse(RevPlan,Plan),
+    assertGbL(BestNode),
+    assertExplanation(BestNode,Tg,Rg,Cg,PathStory),
+    !.
+
+%we need two version of  assertGbL and assertExplanation because it is possible that the node story doe not exist.
+%this happens if the min max find a win move just after one step.
+assertGbL(BestNode) :-
+    tetraminos(T),
+    nth1(2,BestNode,NodeStory),
+    T \= NodeStory,
     nth1(4,BestNode,NextGbL), 
     retractall(startGbL(_)),
-    asserta(startGbL(NextGbL)),
-    reverse(RevPlan,Plan),
+    asserta(startGbL(NextGbL)).
+
+assertGbL(BestNode) :-
+    tetraminos(T),
+    nth1(2,BestNode,NotNodeStory),
+    T == NotNodeStory,
+    nth1(3,BestNode,NextGbL), 
+    retractall(startGbL(_)),
+    asserta(startGbL(NextGbL)).
+
+assertExplanation(BestNode,Tg,Rg,Cg,PathStory) :-
+    tetraminos(T),
     nth1(2,BestNode,NodeStory), 
+    T \= NodeStory,
+    last(NodeStory,ScoreComponent),
     append([(Tg,Rg,Cg)],NodeStory,FullNodeStory),
     retractall(explanation),
-    asserta(explanation(FullNodeStory,PathStory)),
+    asserta(explanation(FullNodeStory,PathStory,ScoreComponent)),
+    !.
+
+assertExplanation(BestNode,Tg,Rg,Cg,PathStory) :-
+    tetraminos(T),
+    nth1(2,BestNode,NotNodeStory), 
+    T = NotNodeStory,
+    nth1(4,BestNode,ScoreComponent),
+    retractall(explanation),
+    asserta(explanation([(Tg,Rg,Cg)],PathStory,ScoreComponent)),
     !.
 %///////////////////////
 

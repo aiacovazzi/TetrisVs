@@ -132,47 +132,47 @@ availableMoves(G,L) :-
 availableMoves(_,[]).
 
 %generate next nodes
-nextNodes(_, [G,P,_], [[Gp,P2,[Ly,P]]|NextNodes]) :-
+nextNodes(_, _, [G,P,_], [[Gp,P2,[Ly,P]]|NextNodes]) :-
     next(P,P2),
     \+winningGB(P2,G),
     availableMoves(G,[Ly|L]),
     !,
     putSymbol(Ly,P,G,Gp),
-    nextNodes(_, [G,P,_], L, NextNodes).
+    nextNodes([G,P,_], L, NextNodes).
 
-nextNodes(_, [G,_,_], []) :-
+nextNodes(_, _, [G,_,_], []) :-
     availableMoves(G,[]).
 
-nextNodes(_, [G,P,_], [Ly|L], [[Gp,P2,[Ly,P]]|NextNodes]) :-
+nextNodes([G,P,_], [Ly|L], [[Gp,P2,[Ly,P]]|NextNodes]) :-
     next(P,P2),
     putSymbol(Ly,P,G,Gp),
-    nextNodes(_, [G,P,_], L, NextNodes).
+    nextNodes([G,P,_], L, NextNodes).
 
-nextNodes(_, _, [], []).
+nextNodes(_, [], []).
 
 %%Heuristic
-evaluateNode([G,P,M],[S,G,P,M]) :-
+evaluateNode(_,[G,P,M],[S,G,P,M]) :-
     turn(X),
     winningGB(X,G),
     S is 1,
     !.
 
-evaluateNode([G,P,M],[S,G,P,M]) :-
+evaluateNode(_,[G,P,M],[S,G,P,M]) :-
     turn(X),
     next(X,X2),
     winningGB(X2,G),
     S is -1,
     !.
 
-evaluateNode([G,P,M],[S,G,P,M]) :-
+evaluateNode(_,[G,P,M],[S,G,P,M]) :-
     S is 0.
 
 %allows to remember the move chain
 %base case: when we collect the value from a leaf
-takeMove(_,_,[_,_,_,Move],[Move]).
+takeMove([_,_,_,Move],[Move]).
 
 %recursive case: when we collect the value from non-leaf node
-takeMove(_,_,[_,CollectedMoves,_,_,Move],[Move|CollectedMoves]).
+takeMove([_,CollectedMoves,_,_,Move],[Move|CollectedMoves]).
 %
 
 callMinMax(BestNode) :-

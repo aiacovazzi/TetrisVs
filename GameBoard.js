@@ -1,7 +1,4 @@
 //"p1 wins" even if p2 win!
-//game over and win sounds
-//gestire anche modalità emergenza nel vs...
-//refactoring
 import Tetromino from "./Tetromino.js";
 import MapperAI from "./MapperAI.js";
 export default class GameBoard {
@@ -507,8 +504,12 @@ export default class GameBoard {
         this.explanationText = 'The information about the tetrominoes position are given using the following structure: [TetrominoCode Row Column].\n\rThe tetromino code represent the kind of tetromino along with its rotation state as a number between 1 and 4, row and column represent the coordinate of the tetromino. The coordinate are relative to the fulcrum that is the darker square of each tetromino.\n\r';
         this.explanationText = this.explanationText + 'To understand how to translate the tetramino code into the actual shape, you can refer the guide reachable using the following hyperlink: http://localhost:5500/images/tetrominoesExplained.png.\n\r\n\r'
           
-        if(this.playersNumber == 1){
+        if(this.playersNumber == 1 || this.emergency){
+            if(this.emergency){
+                this.explanationText = this.explanationText + 'The gameboard is almost full! So it\'s time to collaborate to avoid game over. In order to do so, the ai will play helping to clear the board without consider any countermove.\n\rThe next move is computed looking foward only to the other player move to enhance performance.\n\r';
+            }
             this.explanationText = this.explanationText + 'The next move is ['+this.minMaxExplanation[0][0].toUpperCase()+' '+this.minMaxExplanation[0][1]+' '+this.minMaxExplanation[0][2]+'] because it allows to reach, in the next step, ['+this.minMaxExplanation[1][0].toUpperCase()+' '+this.minMaxExplanation[1][1]+' '+this.minMaxExplanation[1][2]+'] that maximize the player advantage (this is true unless a better move will be available the next step).\n\r';
+            this.explanationText = this.explanationText + 'To understand why ['+this.minMaxExplanation[1][0].toUpperCase()+' '+this.minMaxExplanation[1][1]+' '+this.minMaxExplanation[1][2]+'] is the best move to reach, read the heuristic evaluation of that move by clicking the following hyperlink: http://localhost:7777/explainHeuristic.\n\r';
         }else{
             var player = null;
             var adversary = null;
@@ -519,8 +520,15 @@ export default class GameBoard {
             }else{
                 player = 'P2';
                 adversary = 'P1';}
-
-            this.explanationText = this.explanationText + 'The next move for '+player+' is ['+this.minMaxExplanation[0][0].toUpperCase()+' '+this.minMaxExplanation[0][1]+' '+this.minMaxExplanation[0][2]+'], this because it allows, in two step, to reach ['+this.minMaxExplanation[2][0].toUpperCase()+' '+this.minMaxExplanation[2][1]+' '+this.minMaxExplanation[2][2]+'] that is the move that maximize '+player+' advantage considering that '+adversary+' has ['+this.minMaxExplanation[1][0].toUpperCase()+' '+this.minMaxExplanation[1][1]+' '+this.minMaxExplanation[1][2]+'] as best countermove.\n\r'
+            console.log(this.minMaxExplanation.length);
+            if(this.minMaxExplanation.length > 1){
+                this.explanationText = this.explanationText + 'The next move for '+player+' is ['+this.minMaxExplanation[0][0].toUpperCase()+' '+this.minMaxExplanation[0][1]+' '+this.minMaxExplanation[0][2]+'], this because it allows, in two step, to reach ['+this.minMaxExplanation[2][0].toUpperCase()+' '+this.minMaxExplanation[2][1]+' '+this.minMaxExplanation[2][2]+'] that is the move that maximize '+player+' advantage considering that '+adversary+' has ['+this.minMaxExplanation[1][0].toUpperCase()+' '+this.minMaxExplanation[1][1]+' '+this.minMaxExplanation[1][2]+'] as best countermove (this is true unless a better move will be available the next step).\n\r'
+                this.explanationText = this.explanationText + 'To understand why ['+this.minMaxExplanation[2][0].toUpperCase()+' '+this.minMaxExplanation[2][1]+' '+this.minMaxExplanation[2][2]+'] is the best move to reach, read the heuristic evaluation of that move by clicking the following hyperlink: http://localhost:7777/explainHeuristic.\n\r';    
+            }else{
+                this.explanationText = this.explanationText + 'The next move for '+player+' is ['+this.minMaxExplanation[0][0].toUpperCase()+' '+this.minMaxExplanation[0][1]+' '+this.minMaxExplanation[0][2]+'], that is the move that maximize '+player+' advantage clearing some rows.\n\r' 
+                this.explanationText = this.explanationText + 'To understand why ['+this.minMaxExplanation[0][0].toUpperCase()+' '+this.minMaxExplanation[0][1]+' '+this.minMaxExplanation[0][2]+'] is the best move to reach, read the heuristic evaluation of that move by clicking the following hyperlink: http://localhost:7777/explainHeuristic.\n\r';    
+            }
+            
         }
 
         this.explanationText = this.explanationText + '\n\rThe path for reach the wanted position is: ['+this.aiMoves+'].\n\rTo see the path history along with the discarded path click the following hyperlink: http://localhost:7777/explainPath.'

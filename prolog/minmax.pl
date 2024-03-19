@@ -12,18 +12,21 @@ operator(maxmax,'@>=').
 minmax(CurrentNode, NextNodesGenerator, Heuristic, MoveTaker, Level, Depth, Alpha, Beta, CurrentNodeEvaluated,  Player) :-
     %nl,write('Current Node: '),write(CurrentNode),
     %nl,write('Level: '),write(Level),
-    call(NextNodesGenerator,Level,CurrentNode,NextNodes),
+    %nl,write('Player: '),write(Player),
+    call(NextNodesGenerator,Player,Level,CurrentNode,NextNodes),
     %nl,write('NextNodes: '),write(NextNodes),
     minmax1(NextNodes,CurrentNode, NextNodesGenerator, Heuristic, MoveTaker, Level, Depth, Alpha, Beta, CurrentNodeEvaluated,  Player),
     !.
 
 %minmax, max depth reached
-minmax(CurrentNode, _, Heuristic, _, Depth, Depth, _, _, CurrentNodeEvaluated,  _) :-
-    evaluate(Heuristic,CurrentNode,CurrentNodeEvaluated).
+minmax(CurrentNode, _, Heuristic, _, Depth, Depth, _, _, CurrentNodeEvaluated, Player) :-
+    evaluate(Player,Heuristic,CurrentNode,CurrentNodeEvaluated).
 
 %no successor for the current node
-minmax1([],CurrentNode, _, Heuristic, _, _, _, _, _, CurrentNodeEvaluated,  _) :-
-    evaluate(Heuristic,CurrentNode,CurrentNodeEvaluated).
+minmax1([],CurrentNode, _, Heuristic, _, _, _, _, _, CurrentNodeEvaluated, Player) :-
+    %nl,write('Evaluate: '),write(CurrentNode),
+    evaluate(Player,Heuristic,CurrentNode,CurrentNodeEvaluated).
+    %nl,write('EvaluatedNode: '),write(CurrentNodeEvaluated).
 
 %there are successors for the current node
 minmax1(NextNodes, CurrentNode, NextNodesGenerator, Heuristic, MoveTaker, Level, Depth, Alpha, Beta, CurrentNodeEvaluated, Player) :-
@@ -33,7 +36,7 @@ minmax1(NextNodes, CurrentNode, NextNodesGenerator, Heuristic, MoveTaker, Level,
     operator(Player,Operator),
     sort(1, Operator, EvaluatedNodes, SortedEvaluatedNodes),
     nth1(1,SortedEvaluatedNodes,BestNode),
-    getBest(MoveTaker,Level,Depth,CurrentNode,BestNode,CurrentNodeEvaluated).
+    getBest(MoveTaker,Level,CurrentNode,BestNode,CurrentNodeEvaluated).  
 
 iterativeEval([CurrentNode|NextNodes], [CurrentNodeEvaluated|NextNodes2], NextNodesGenerator, Heuristic, MoveTaker, Level, Depth, Alpha, Beta, Player):-
     Level1 is Level + 1,
@@ -45,19 +48,17 @@ iterativeEval([CurrentNode|NextNodes], [CurrentNodeEvaluated|NextNodes2], NextNo
 iterativeEval([], [], _, _, _, _, _, _, _, _).
 
 %If the level is > 0 then I bind the best score to CurrentNode, otherwise i give as result the best successor node.
-getBest(_,0,_,_,BestNode,BestNode) :- !.
+getBest(_,0,_,BestNode,BestNode) :- !.
 
-getBest(MoveTaker,Level,Depth,CurrentNode,BestNode,CurrentNodeEvaluated) :-
+getBest(MoveTaker,_,CurrentNode,BestNode,CurrentNodeEvaluated) :-
     nth1(1,BestNode,Evaluation),
-    call(MoveTaker,Level,Depth,BestNode,Moves),
+    call(MoveTaker,BestNode,Moves),!,
     append([Evaluation,Moves],CurrentNode,CurrentNodeEvaluated),
-    %nl,write('takeMove:'),write(BestNode),write(Moves),write(CurrentNodeEvaluated),
     !. 
 
-evaluate(Heuristic,CurrentNode,CurrentNodeEvaluated) :-
-    %nl,write('Evaluate: '),write(CurrentNode),
-    call(Heuristic,CurrentNode,CurrentNodeEvaluated).
-    %nl,write('EvaluatedNode: '),write(CurrentNodeEvaluated).
+evaluate(Player,Heuristic,CurrentNode,CurrentNodeEvaluated) :-
+    call(Heuristic,Player,CurrentNode,CurrentNodeEvaluated).
+    
 
 %AlphBeta pruning disabled for maxmax mode
 updateAlphaBeta(maxmax,_,Alpha,Beta,NextNodes,Alpha,Beta,NextNodes).
