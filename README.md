@@ -14,7 +14,7 @@
 - Run `tetris.html` with VSCode using "Open with Live Server".
   OR
 - Load the `VSTETRIS` folder in Simple Web Server.
-- Choose a port number (e.g., 8089).
+- Choose a port number (e.g. 8089).
 - Run the game using the following hyperlink: [http://127.0.0.1:8089/tetris.html](http://127.0.0.1:8089/tetris.html)
 
 ## How to play:
