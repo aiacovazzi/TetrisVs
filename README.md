@@ -9,12 +9,13 @@
 ### Prolog server:
 - Run `tetrisws.pl` with Swi Prolog, this will start the backend server.
 
-### HTML/JS server:
+### HTML/JS server  (using Live Server):
 - Load the `VSTETRIS` folder in VSCode.
 - Run `tetris.html` with VSCode using "Open with Live Server".
-  OR
+  
+### HTML/JS server  (alternative way using Simple Web Server):
 - Load the `VSTETRIS` folder in Simple Web Server.
-- Choose a port number (e.g., 8089).
+- Choose a port number (e.g. 8089).
 - Run the game using the following hyperlink: [http://127.0.0.1:8089/tetris.html](http://127.0.0.1:8089/tetris.html)
 
 ## How to play:
@@ -22,12 +23,12 @@
 ### Player 1:
 - WASD keys move the Player 1 tetromino.
 - Spacebar rotates the Player 1 tetromino.
+- P key put the game in pause mode.
 
 ### Player 2:
 - Arrow keys move the Player 2 tetromino.
 - Right CTRL rotates the Player 2 tetromino.
-
-- Press 'P' to put the game in pause mode (for both players).
+- P key put the game in pause mode.
 
 ## How to use the explanation mode (for Firefox browser):
 - If the explanation mode is turned on, the game will be paused at each AI move.
