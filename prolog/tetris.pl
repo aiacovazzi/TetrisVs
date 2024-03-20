@@ -4,9 +4,13 @@
     -DOCUMENTAZIONE Tetris VS
     Titolo:
     Tetris Vs - A Case Study on Game Playing Agents in Prolog
-		-Abstract (piccola storia di tetris, perché tetris, anticipazione sul resto del paper)
+		-Introduzione (piccola storia di tetris, perché tetris, anticipazione sul resto del paper)
 		-descrizione del gioco e le sue modalità, riferimento al set di regole utilizzate
+
+        Prolog implementation of the Agent:
+        perché prolog?
 		-rappresentazione kb
+        -implementazione operazioni base
 		-euristica di valutazione mosse
 		-generazione strategia
 			-1p
@@ -17,15 +21,17 @@
             -come viene utilizzato dal tetris
 		-implementazione del ws per comunicare col FE
 		-implementazione explainability
+
 		-criticità e sviluppi futuri
             -no real time
             -lentezza 2p
                 -possibile soluzione: montecarlo tree search
             -non accuratezza euristica 2p
                 -possibile soluzione: algoritmo genetico per individuare pesi
-		
+        -conclusioni
 		-appendice a tris
 		-appendice b snake
+        -bibliografia
 */
 :- use_module(library(lists)).
 :- use_module(planner).
