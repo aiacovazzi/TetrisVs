@@ -26,10 +26,6 @@
 		
 		-appendice a tris
 		-appendice b snake
-
-    -Mini manuale d'uso
-        -installazione
-        -comandi
 */
 :- use_module(library(lists)).
 :- use_module(planner).
