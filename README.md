@@ -1,9 +1,8 @@
 # Tetris Vs
 
 ## Requirements:
-- Swi Prolog
+- [Swi Prolog](https://www.swi-prolog.org/)
 - A local web server (for example [Simple Web Server](https://simplewebserver.org/)), or alternatively, you can use VSCode with the Live Server extension installed ([How to enable Live Server on Visual Studio Code](https://www.geeksforgeeks.org/how-to-enable-live-server-on-visual-studio-code/)).
-- The whole project has been developed testing it using Live Server.
 
 ## Installation:
 
