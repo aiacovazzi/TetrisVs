@@ -4,7 +4,7 @@
     -DOCUMENTAZIONE Tetris VS
     Titolo:
     Tetris Vs - A Case Study on Game Playing Agents in Prolog
-		-introduzione (piccola storia di tetris, perché tetris, anticipazione sul resto del paper)
+		-Abstract (piccola storia di tetris, perché tetris, anticipazione sul resto del paper)
 		-descrizione del gioco e le sue modalità, riferimento al set di regole utilizzate
 		-rappresentazione kb
 		-euristica di valutazione mosse
