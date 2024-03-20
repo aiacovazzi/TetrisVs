@@ -22,12 +22,12 @@
 ### Player 1:
 - WASD keys move the Player 1 tetromino.
 - Spacebar rotates the Player 1 tetromino.
+- P key put the game in pause mode.
 
 ### Player 2:
 - Arrow keys move the Player 2 tetromino.
 - Right CTRL rotates the Player 2 tetromino.
-
-- Press 'P' to put the game in pause mode (for both players).
+- P key put the game in pause mode.
 
 ## How to use the explanation mode (for Firefox browser):
 - If the explanation mode is turned on, the game will be paused at each AI move.
