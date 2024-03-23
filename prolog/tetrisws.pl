@@ -24,7 +24,7 @@ retractCell(_Request) :-
     retractall(explanation(_,_,_)),
     reply_json_dict('ok').
 
-%put/T/R/C (put a tetramino and compute the new gameboard)
+%put/T/R/C (put a tetromino and compute the new gameboard)
 :- http_handler(root(put/T/R/C), put(T,R,C), []).
 put(T,R,C,_Request) :-
     cors_enable,
@@ -34,12 +34,12 @@ put(T,R,C,_Request) :-
     placePiece(T1,R1,C1),
     reply_json_dict('ok').
 
-%resetStart (retract all the starting tetraminos)
+%resetStart (retract all the starting tetrominoes)
 :- http_handler(root(resetstart), resetStart, []).
 resetStart(_Request) :-
     cors_enable,
-    retractall(tetraminos(_)),
-    assertz(tetraminos([])),
+    retractall(tetrominoes(_)),
+    assertz(tetrominoes([])),
     reply_json_dict('ok').
 
 %easyMode (assert easyMode)
@@ -56,7 +56,7 @@ hardMode(_Request) :-
     retractall(easyMode),
     reply_json_dict('ok').
 
-%start/T (assert the starting tetraminos)
+%start/T (assert the starting tetrominoes)
 :- http_handler(root(start/T), reqStart(T), []).
 reqStart(T,_Request) :-
     cors_enable,
@@ -64,7 +64,7 @@ reqStart(T,_Request) :-
     start(T1),
     reply_json_dict('ok').
 
-%path (find the best path for the tetramino)
+%path (find the best path for the tetromino)
 :- http_handler(root(path/Player), path(Player), []).
 path(Player,_Request) :-
     cors_enable,
@@ -114,7 +114,7 @@ explainHeuristic(_Request) :-
     write('Minimize the sum of the aggregate height of all the columns having a value of: '),write(AggHeight),write('.'),nl,
     write('Minimize the holes under blocks having a value of: '),write(Holes),write('.'),nl,
     write('Minimize the difference of height between differernt column (bumpiness) having a value of: '),write(Bump),write('.'),nl,nl,
-    write('Just remember that this is not the evalution of the current move, is the evaluation of the best reachable move starting from the one the AI has already executed, this because the minmax algorithm perform the static evaluation (how much a move is good or bad) looking at the last frontier of reachable moves for a given set of tetraminoes.').
+    write('Just remember that this is not the evalution of the current move, is the evaluation of the best reachable move starting from the one the AI has already executed, this because the minmax algorithm perform the static evaluation (how much a move is good or bad) looking at the last frontier of reachable moves for a given set of tetrominoes.').
 
 writeClearedRows(0) :- !.
 

@@ -1,4 +1,4 @@
-:- module(tetris, [startGbL/1,getPathOfBestMove/2,writeGameBoard/0,placePiece/3,start/1,tetraminos/1,nextNodes/4,evaluateNode/3,takeMove/2,evaluateMovement/2,checkGoal/2,rotate/2,left/2,right/2,down/2,explanation/3,easyMode/0]).
+:- module(tetris, [startGbL/1,getPathOfBestMove/2,writeGameBoard/0,placePiece/3,start/1,tetrominoes/1,nextNodes/4,evaluateNode/3,takeMove/2,evaluateMovement/2,checkGoal/2,rotate/2,left/2,right/2,down/2,explanation/3,easyMode/0]).
 /*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 >To Do
     -DOCUMENTAZIONE Tetris VS
@@ -39,20 +39,20 @@
 gameBoardW(10).
 gameBoardH(20).
 
-%the starting position of the playing tetramino
-tetraminoSpawnX(5).
-tetraminoSpawnY(1).
+%the starting position of the playing tetromino
+tetrominoSpawnX(5).
+tetrominoSpawnY(1).
 
-:-dynamic(tetraminos/1).
+:-dynamic(tetrominoes/1).
 :-dynamic(startGbL/1).
 :-dynamic(explanation/3).
 :-dynamic(easyMode/0).
 
 start(T):-
-    tetraminos(TList),
+    tetrominoes(TList),
     append(TList,[T],TList2),
-    retract(tetraminos(TList)),
-    assert(tetraminos(TList2)).
+    retract(tetrominoes(TList)),
+    assert(tetrominoes(TList2)).
 %%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%
@@ -108,7 +108,7 @@ first_items([[H|_]|T], [H|T2]) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%Tetraminos' operators and checks%
+%Tetrominoes' operators and checks%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Check if a cell is occupied in the list
 occCellL(R,C,GbList) :-
@@ -134,7 +134,7 @@ freeCell1(R,C,GbList) :-
     gen(0, W, C),    
     freeCell(R,C,GbList).
 
-%check if there is space for a tetramino expressed in term of 4 cells.
+%check if there is space for a tetromino expressed in term of 4 cells.
 fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList) :- 
     freeCell(R1,C1,GbList),
     freeCell(R2,C2,GbList),
@@ -143,12 +143,12 @@ fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 %%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%
-%Tetraminos Definition%
+%Tetrominoes Definition%
 %%%%%%%%%%%%%%%%%%%%%%%
 %Check if there is space for an a tetromino on the gameboard given the reference point.
 %R1;C1 is the reference point.
 
-%O Tetramino
+%O Tetromino
 %[ ][ ]
 %[ ][x]
 %[R4;C4][R2;C2]
@@ -163,7 +163,7 @@ fitPiece(o1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
     fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%I Tetramino
+%I Tetromino
 %[ ][x][ ][ ]
 %[R2;C2][R1;C1][R3;C3][R4;C4]
 fitPiece(i1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
@@ -193,7 +193,7 @@ fitPiece(i2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
     fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%S Tetramino
+%S Tetromino
 %   [ ][ ]
 %[ ][x]
 %       [R3;C3][R4;C4]
@@ -224,8 +224,8 @@ fitPiece(s2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
     fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%Z Tetramino
-%S Tetramino
+%Z Tetromino
+%S Tetromino
 %[ ][ ]
 %   [x][ ]
 %[R4;C4][R3;C3]
@@ -255,7 +255,7 @@ fitPiece(z2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
     fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%T Tetramino
+%T Tetromino
 %   [ ]
 %[ ][x][ ]
 %       [R3;C3]
@@ -315,7 +315,7 @@ fitPiece(t4,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
     fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%J Tetramino
+%J Tetromino
 %[ ]
 %[ ][x][ ]
 %[R3;C3]
@@ -374,7 +374,7 @@ fitPiece(j4,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
     fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%L Tetramino
+%L Tetromino
 %      [ ]
 %[ ][x][ ]
 %              [R3;C3]
@@ -433,7 +433,7 @@ fitPiece(l4,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
     fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%Convert a generic tetramino in its starting shape
+%Convert a generic tetromino in its starting shape
 firstShape(o,o1).
 firstShape(i, i1).
 firstShape(s, s1).
@@ -442,8 +442,8 @@ firstShape(l, l1).
 firstShape(j, j1).
 firstShape(t, t1).
 
-%Mapping each tetramino with its rotations.
-%Can be used also to obtain the next rotation of a given tetramino.
+%Mapping each tetromino with its rotations.
+%Can be used also to obtain the next rotation of a given tetromino.
 rotation(o,o1,o1).
 rotation(i, i1, i2).
 rotation(i, i2, i1).
@@ -464,7 +464,7 @@ rotation(j, j2, j3).
 rotation(j, j3, j4).
 rotation(j, j4, j1).
 
-%Discover all the possible cell where a tetramino can be placed for all its rotations
+%Discover all the possible cell where a tetromino can be placed for all its rotations
 findPossibleGoals(T,List,GbList) :- 
     findall((T1), rotation(T, T1, _), Lr),
     findPossibleGoals([],Lr,List,GbList).
@@ -472,12 +472,12 @@ findPossibleGoals(T,List,GbList) :-
 findPossibleGoals(Found,[],Found,_).
 
 findPossibleGoals(Found,[Ht|T],L,GbList) :-
-    findall((Ht,R,C), tetraminoGoal(Ht,R,C,GbList), List),
+    findall((Ht,R,C), tetrominoGoal(Ht,R,C,GbList), List),
     append(Found,List,NewList),
     findPossibleGoals(NewList,T,L,GbList).
 
-%a tetramino can be placed on a free cell when the next row collide
-tetraminoGoal(Tr,R,C,GbList) :-
+%a tetromino can be placed on a free cell when the next row collide
+tetrominoGoal(Tr,R,C,GbList) :-
     freeCell1(R,C,GbList),
     fitPiece(Tr,R,C,_,_,_,_,_,_,GbList),
     R1 is R + 1,
@@ -501,7 +501,7 @@ removeRows([R|T],GbListOld,GbListNew) :-
     delete(GbListOld,[R,_],GbListOld1),
     removeRows(T,GbListOld1,GbListNew).
 
-%Compute the new gameboard after the tetramino placing
+%Compute the new gameboard after the tetromino placing
 %If one or more rows are full perform removing and row shifting.
 %Called by fronted is playert perform an action
 placePiece(T,R1,C1) :-
@@ -663,8 +663,8 @@ gameBoardScore(_,GbList,AggregateHeight,RowCleared,Holes,Bumpiness,SumEnt,Score)
 checkElegibility(Tn,R,C,GbList):-
     rotation(T, Tn, _),
     firstShape(T,T1),
-    tetraminoSpawnX(X),
-    tetraminoSpawnY(Y),
+    tetrominoSpawnX(X),
+    tetrominoSpawnY(Y),
     Start = (T1,Y,X,GbList),  
     placePiece(T1,Y,X,GbList,_,_),  
     Goal = (Tn,R,C,GbList),
@@ -672,17 +672,17 @@ checkElegibility(Tn,R,C,GbList):-
 
 callPlacePiece(_,_,[],[]).
 
-callPlacePiece(Tetraminos,GbList,[(T,R,C)|Taill],[[Tetraminos,GbListPost,ClRow,(T,R,C)]|Tail2]):-
+callPlacePiece(Tetrominoes,GbList,[(T,R,C)|Taill],[[Tetrominoes,GbListPost,ClRow,(T,R,C)]|Tail2]):-
     catch(call_with_time_limit(0.5, checkElegibility(T,R,C,GbList)),time_limit_exceeded,fail),
     placePiece(T,R,C,GbList,GbListPost,ClRow),
-    callPlacePiece(Tetraminos,GbList,Taill,Tail2),
+    callPlacePiece(Tetrominoes,GbList,Taill,Tail2),
     !.
 
-callPlacePiece(Tetraminos,GbList,[_|Taill],Tail2):-
-    callPlacePiece(Tetraminos,GbList,Taill,Tail2).
+callPlacePiece(Tetrominoes,GbList,[_|Taill],Tail2):-
+    callPlacePiece(Tetrominoes,GbList,Taill,Tail2).
 
-%Node: [Eval,Tetraminos,GbL,RowCleared, Move]
-%Tetraminos: a list of tetraminos
+%Node: [Eval,Tetrominoes,GbL,RowCleared, Move]
+%Tetrominoes: a list of tetrominoes
 %Gb: a list of the occCell for a certain gameboard configuration
 %Move: the move [t,r,c] that allow to obatain the current node, added only when nextNodes is called
 %Eval: the evaluation of the node, added only when the heuristc is called, nextNodes will not see this one
@@ -691,9 +691,9 @@ callPlacePiece(Tetraminos,GbList,[_|Taill],Tail2):-
 %do not generate any other move if checking a row-clear move in vs mode.
 %it's like "win" from the AI perspective.
 
-nextNodes1(_,Tetraminos,GbL,T, _, NextNodes) :-
+nextNodes1(_,Tetrominoes,GbL,T, _, NextNodes) :-
     findPossibleGoals(T,L,GbL),
-    callPlacePiece(Tetraminos,GbL,L,NextNodes).
+    callPlacePiece(Tetrominoes,GbL,L,NextNodes).
 
 %easy mode: every row-clearing move stops the branch exploration
 nextNodes(Player,_,Node,[]) :-
@@ -711,13 +711,13 @@ nextNodes(Player,_,Node,[]) :-
     ClRow > 0.
 
 nextNodes(Player,Level,Node,NextNodes) :-
-    nth1(1, Node, Tetraminos),
+    nth1(1, Node, Tetrominoes),
     nth1(2, Node, GbL),
-    nth0(Level, Tetraminos, T),
+    nth0(Level, Tetrominoes, T),
     nth1(3, Node, ClRow),
-    nextNodes1(Player,Tetraminos,GbL,T,ClRow, NextNodes).
+    nextNodes1(Player,Tetrominoes,GbL,T,ClRow, NextNodes).
 
-evaluateNode(Player,[Tetraminos,GbL,ClRow,(T,R,C)], [S,Tetraminos,GbL,(AggHeight,ClRow,Holes,Bump,Ent),(T,R,C)]) :-
+evaluateNode(Player,[Tetrominoes,GbL,ClRow,(T,R,C)], [S,Tetrominoes,GbL,(AggHeight,ClRow,Holes,Bump,Ent),(T,R,C)]) :-
     gameBoardScore(Player,GbL,AggHeight,ClRow,Holes,Bump,Ent,S),
     !.
 
@@ -734,7 +734,7 @@ takeMove(Node,[Move|CollectedMoves]):-
     nth1(6,Node,Move).
 
 callMinMax(GbL, Player, BestNode) :-
-    tetraminos(T),
+    tetrominoes(T),
     length(T,Depth),
     StartingNode = [T,GbL,0],
     NextNodesGenerator = nextNodes,
@@ -774,9 +774,9 @@ down((T1,R1,C1,GbL),(T1,R2,C1,GbL)) :-
 %evaluateMovement compute a score for each move given the goal, the score is weighted by the priority of the move.
 %the priority is: rotate, [left, right], down.
 %the ratio is: 
-%   a player first rotate a tetramino in the proper rotation
+%   a player first rotate a tetromino in the proper rotation
 %   then align it to the point she wants to reach
-%   then push down the tetramino in that point
+%   then push down the tetromino in that point
 %this sequence of operation is the most common, so priority are shaped around this scenario, however it can deal also with more complex situations.
 
 evaluateMovement([rotate, (T1,_,_,_), (T2,_,_,_)], Score) :-
@@ -826,14 +826,14 @@ serchPath(Start, Goal, Plan, PlanStory) :-
 %getPathOfBestMove search for the best move and then call the planner for the tetris path problem.
 %start and goal are inverted because I want to find the path starting from the goal and coming back to the start.
 %This allow to deal easily with particular cases like slide or t-spin.
-%If a certain move is actually impossibile to reach (eg: trapped tetramino) the next move is considered.
+%If a certain move is actually impossibile to reach (eg: trapped tetromino) the next move is considered.
 
 getPathOfBestMove(Player,Plan) :-
     getStartGbL(GbL),
-    tetraminos([T|_]),
+    tetrominoes([T|_]),
     firstShape(T,T1),
-    tetraminoSpawnX(X),
-    tetraminoSpawnY(Y),!,
+    tetrominoSpawnX(X),
+    tetrominoSpawnY(Y),!,
     placePiece(T1,Y,X,GbL,_,_),  %avoid to start the whole algorithm if the piece cannot be placed, gameover condition if failed
     callMinMax(GbL,Player,BestNode),
     Start = (T1,Y,X,GbL),
@@ -848,7 +848,7 @@ getPathOfBestMove(Player,Plan) :-
 %we need two version of  assertGbL and assertExplanation because it is possible that the node story doe not exist.
 %this happens if the min max find a win move just after one step.
 assertGbL(BestNode) :-
-    tetraminos(T),
+    tetrominoes(T),
     nth1(2,BestNode,NodeStory),
     T \= NodeStory,
     nth1(4,BestNode,NextGbL), 
@@ -856,7 +856,7 @@ assertGbL(BestNode) :-
     asserta(startGbL(NextGbL)).
 
 assertGbL(BestNode) :-
-    tetraminos(T),
+    tetrominoes(T),
     nth1(2,BestNode,NotNodeStory),
     T == NotNodeStory,
     nth1(3,BestNode,NextGbL), 
@@ -864,7 +864,7 @@ assertGbL(BestNode) :-
     asserta(startGbL(NextGbL)).
 
 assertExplanation(BestNode,Tg,Rg,Cg,PathStory) :-
-    tetraminos(T),
+    tetrominoes(T),
     nth1(2,BestNode,NodeStory), 
     T \= NodeStory,
     last(NodeStory,ScoreComponent),
@@ -874,7 +874,7 @@ assertExplanation(BestNode,Tg,Rg,Cg,PathStory) :-
     !.
 
 assertExplanation(BestNode,Tg,Rg,Cg,PathStory) :-
-    tetraminos(T),
+    tetrominoes(T),
     nth1(2,BestNode,NotNodeStory), 
     T = NotNodeStory,
     nth1(4,BestNode,ScoreComponent),
@@ -889,18 +889,18 @@ assertExplanation(BestNode,Tg,Rg,Cg,PathStory) :-
 %write game board for debugging
 %call it using: ?- writeGameBoard.
 
-getTetraminos(Ts):-
-    tetraminos(Ts),
+getTetrominoes(Ts):-
+    tetrominoes(Ts),
     !.
 
-getTetraminos([]).
+getTetrominoes([]).
 
 writeGameBoard :-
     getStartGbL(GbL),
 	writeGameBoard(0,0,GbL),
     nl,
-    getTetraminos(Ts),
-    write('tetraminos: '),
+    getTetrominoes(Ts),
+    write('tetrominoes: '),
     write(Ts).
 
 writeGameBoard(R,C,_) :- 
