@@ -6,12 +6,15 @@ let aiExpEnabled = '◀ AI explanation enabled ▶';
 let aiExpDisabled = '◀ AI explanation disabled ▶';
 let aiLevelEasy = '◀ AI opponent level: easy ▶';
 let aiLevelHard = '◀ AI opponent level: hard ▶';
+let numberOfTurns = 1;
+let vsModeNumberOfTurns = '◀ Vs Mode: number of turns '+numberOfTurns.toString() +' ▶';
 let aiExp = aiExpDisabled;
 let aiLevel = aiLevelEasy;
 let optionAiExp = 'Disabled';
 let optionAilevel = 'Easy';
 
-let gameMode = [aiExp,aiLevel,'Solo', 'Solo AI', 'Vs Player', 'Vs AI', 'AI vs AI'];
+
+let gameMode = [aiExp,aiLevel,vsModeNumberOfTurns,'Solo', 'Solo AI', 'Vs Player', 'Vs AI', 'AI vs AI'];
 let options = null;
 let index = 0;
 let keydown = event => {
@@ -48,17 +51,34 @@ let keydown = event => {
         }
     }
 
+    if ((event.code == "ArrowRight" || event.code == "KeyD") && index == 2)  {
+        numberOfTurns = numberOfTurns + 1;
+        if(numberOfTurns == 6){
+            numberOfTurns = 1;
+        }
+        gameMode[2] = '◀ Vs Mode: number of turns '+numberOfTurns.toString() +' ▶';
+    }
+
+    
+    if ((event.code == "ArrowLeft" || event.code == "KeyA") && index == 2)  {
+        numberOfTurns = numberOfTurns - 1;
+        if(numberOfTurns == 0){
+            numberOfTurns = 5;
+        }
+        gameMode[2] = '◀ Vs Mode: number of turns '+numberOfTurns.toString() +' ▶';
+    }
+
     if (event.code == "Enter" || event.code == "Space") {
-        if(index == 2){
-            options = [1,'Player','None',optionAiExp,optionAilevel];
-        }else if(index == 3){
-            options = [1,'AI','None',optionAiExp,optionAilevel];
+        if(index == 3){
+            options = [1,'Player','None',optionAiExp,optionAilevel,numberOfTurns];
         }else if(index == 4){
-            options = [2,'Player','Player',optionAiExp,optionAilevel];
+            options = [1,'AI','None',optionAiExp,optionAilevel,numberOfTurns];
         }else if(index == 5){
-            options = [2,'Player','AI',optionAiExp,optionAilevel];
+            options = [2,'Player','Player',optionAiExp,optionAilevel,numberOfTurns];
         }else if(index == 6){
-            options = [2,'AI','AI',optionAiExp,optionAilevel];
+            options = [2,'Player','AI',optionAiExp,optionAilevel,numberOfTurns];
+        }else if(index == 7){
+            options = [2,'AI','AI',optionAiExp,optionAilevel,numberOfTurns];
         }
     }
 

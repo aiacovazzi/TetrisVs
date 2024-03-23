@@ -1,4 +1,3 @@
-//"p1 wins" even if p2 win!
 import Tetromino from "./Tetromino.js";
 import MapperAI from "./MapperAI.js";
 export default class GameBoard {
@@ -16,7 +15,7 @@ export default class GameBoard {
     //false: p2
     turn = false;
 
-    numberOfLevels = 5;
+    numberOfLevels = 1;
 
     level = 1;
 
@@ -127,6 +126,7 @@ export default class GameBoard {
         this.#aiMapper = new MapperAI();
         option[3] == 'Enabled' ? this.#explainMode = true: this.#explainMode = false;
         option[4] == 'Easy' ? this.easyMode = true: this.easyMode = false;
+        this.numberOfLevels = option[5];
 
         //assign the proper event listener for human player
         if (this.playerOne == 'Player') {
