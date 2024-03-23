@@ -117,7 +117,6 @@ writeRow(R,C,S,F) :-
     !.
 
 %planner predicates
-
 action(moveUp).
 action(moveLeft).
 action(moveDown).

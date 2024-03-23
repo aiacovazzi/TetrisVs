@@ -6,9 +6,7 @@
 :- use_module(library(http/http_json)).
 :- use_module(library(http/http_dispatch)).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%Web Server Interface Config%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Web Server Interface Config
 :- set_setting(http:cors, [*]).
 :- http_server(http_dispatch, [port(7777)]).
 

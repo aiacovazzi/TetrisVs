@@ -32,8 +32,6 @@
 :- use_module(library(lists)).
 :- use_module(planner).
 :- use_module(minmax).
-%
-%//////////////////////////////////////////////////////////
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Defining the game board properties and the occupied cells%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -55,6 +53,7 @@ start(T):-
     append(TList,[T],TList2),
     retract(tetraminos(TList)),
     assert(tetraminos(TList2)).
+%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%
 %Auxiliary rules%
@@ -77,7 +76,6 @@ eq(X,Y,Z) :-
     var(Z),
     Z is X - Y,
     !.
-%
 
 %logarithm in base 2
 logBase2(0,0) :- !.
@@ -86,7 +84,7 @@ logBase2(X,R) :-
     N is log10(X),
     D is log10(2),
     R is N/D.
-%
+
 
 %auxiliary number generator used by freeCell1
 gen(Cur, Top, Cur):- Cur < Top.
@@ -95,7 +93,7 @@ gen(Cur, Top, Next):-
   Cur < Top,
   Cur1 is Cur+1,
   gen(Cur1, Top, Next).
-%
+
 
 %Return the list that contain all the occupied cells
 getStartGbL(GbL) :-
@@ -103,13 +101,11 @@ getStartGbL(GbL) :-
     !.
 
 getStartGbL([]).	
-%
 
 first_items([], []).
 first_items([[H|_]|T], [H|T2]) :-
     first_items(T, T2).
-  
-%/////////////////////////////////
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Tetraminos' operators and checks%
@@ -144,6 +140,7 @@ fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
     freeCell(R2,C2,GbList),
     freeCell(R3,C3,GbList),
     freeCell(R4,C4,GbList).
+%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%
 %Tetraminos Definition%
@@ -434,6 +431,7 @@ fitPiece(l4,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
     eq(R3,R1,+1),
     eq(C4,C2,-1),
     fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %Convert a generic tetramino in its starting shape
 firstShape(o,o1).
@@ -484,6 +482,7 @@ tetraminoGoal(Tr,R,C,GbList) :-
     fitPiece(Tr,R,C,_,_,_,_,_,_,GbList),
     R1 is R + 1,
     \+fitPiece(Tr,R1,C,_,_,_,_,_,_,GbList).
+%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%
 %GameBoard Manipulation%
@@ -493,8 +492,7 @@ placePiece(T,R1,C1,LGbpre,LGbpost,NumberOfClearedRows) :-
     fitPiece(T,R1,C1,R2,C2,R3,C3,R4,C4,LGbpre),
     L = [[R1,C1],[R2,C2],[R3,C3],[R4,C4]],
     append(LGbpre,L,LGbpre1),
-    computeNewGameBoard(LGbpre1,LGbpost,NumberOfClearedRows).
-%   
+    computeNewGameBoard(LGbpre1,LGbpost,NumberOfClearedRows). 
 
 %remove all the rows in the list indexed by rownumber
 removeRows([],GbListNew,GbListNew).
@@ -544,7 +542,7 @@ shiftOccCell(N, [[R,C]|T], [[R1,C]|T2]) :-
     shiftOccCell(N, T, T2).
 
 %Return the row number of the cleared row
-%here setof is used
+%here bagof is used because we want a result for each row
 countOccCelInRow(R,N, GbList) :- 
     bagof(([C]),occCellLG(R,C,GbList),Occ),
     length(Occ,N).
@@ -553,14 +551,7 @@ clearedRow(R, GbList) :-
     countOccCelInRow(R,Occ, GbList),
     gameBoardW(W),
     Occ = W.
-%
-
-assertList([]).
-
-assertList([[R,C]|T]) :-
-    assertz(occCell(R,C)),
-    assertList(T).
-%%%%%%%%%%%%%%%%%%  
+%%%%%%%%%%%%%%%%%%%%%  
 
 %%%%%%%%%%%%%%%%%%%%%
 %GameBoard Evaluator%
@@ -664,11 +655,11 @@ gameBoardScore('min',GbList,AggregateHeight,RowCleared,Holes,Bumpiness,SumEnt,Sc
 
 gameBoardScore(_,GbList,AggregateHeight,RowCleared,Holes,Bumpiness,SumEnt,Score) :-
     gameBoardScore1(GbList,AggregateHeight,RowCleared,Holes,Bumpiness,SumEnt,Score).
-%////////////////////////////////////////    
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%MaxMax/MinMax                                                                                                                                                                                                                                                                                                                                                    Max/MaxMax move selection%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%
+%MaxMax/MinMax%                                                                                                                                                                                                                                                                                                                                                   Max/MaxMax move selection%
+%%%%%%%%%%%%%%%
 checkElegibility(Tn,R,C,GbList):-
     rotation(T, Tn, _),
     firstShape(T,T1),
@@ -700,9 +691,6 @@ callPlacePiece(Tetraminos,GbList,[_|Taill],Tail2):-
 %do not generate any other move if checking a row-clear move in vs mode.
 %it's like "win" from the AI perspective.
 
-/*nextNodes1('max', _, _, _, ClRow, []) :- 
-    ClRow > 0.*/
-
 nextNodes1(_,Tetraminos,GbL,T, _, NextNodes) :-
     findPossibleGoals(T,L,GbL),
     callPlacePiece(Tetraminos,GbL,L,NextNodes).
@@ -721,7 +709,6 @@ nextNodes(Player,_,Node,[]) :-
     Player = 'max',
     nth1(3, Node, ClRow),
     ClRow > 0.
-
 
 nextNodes(Player,Level,Node,NextNodes) :-
     nth1(1, Node, Tetraminos),
@@ -754,10 +741,11 @@ callMinMax(GbL, Player, BestNode) :-
     Heuristic = evaluateNode,
     MoveTaker = takeMove,
     minmax(StartingNode, NextNodesGenerator, Heuristic, MoveTaker, 0, Depth, -inf, +inf, BestNode, Player).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%Planner%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%
+%Planner%
+%%%%%%%%%
 %Define actions
 
 action(rotate).
@@ -829,6 +817,11 @@ serchPath(Start, Goal, Plan, PlanStory) :-
     Heuristic=evaluateMovement, 
     GoalChecker=checkGoal,
     planner(Start, Goal, Actions, Heuristic, Plan, PlanStory, GoalChecker).
+%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Main predicate: GetPathOfBestMove%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %getPathOfBestMove search for the best move and then call the planner for the tetris path problem.
 %start and goal are inverted because I want to find the path starting from the goal and coming back to the start.
@@ -888,7 +881,7 @@ assertExplanation(BestNode,Tg,Rg,Cg,PathStory) :-
     retractall(explanation),
     asserta(explanation([(Tg,Rg,Cg)],PathStory,ScoreComponent)),
     !.
-%///////////////////////
+%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%
 %Debugging Helper Rules%
@@ -960,4 +953,4 @@ writeColNumbers(C) :-
     C1 is C + 1, 
     writeColNumbers(C1),
     !.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%
