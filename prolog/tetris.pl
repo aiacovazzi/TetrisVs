@@ -2,17 +2,20 @@
 /*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 >To Do
     -DOCUMENTAZIONE Tetris VS
+        //add citation np hard and tetris ai history
+        -Game GUI?
+
         -Prolog implementation of the Agent:
             -implementazione operazioni base
             -euristica di valutazione mosse
             --------------------------------------------
+            -implementazione del best first planner
+                -come viene utilizzato dal tetris
+            -implementazione del min max
+                -come viene utilizzato dal tetris 1p e 2p
             -generazione strategia
                 -1p
                 -2p
-            -implementazione del min max
-                -come viene utilizzato dal tetris 1p e 2p
-            -implementazione del best first planner
-                -come viene utilizzato dal tetris
             -implementazione del ws per comunicare col FE
             -implementazione explainability
 
@@ -101,13 +104,6 @@ getStartGbL(GbL) :-
 
 getStartGbL([]).	
 %
-
-%remove all the rows in the list indexed by rownumber
-removeRows([],GbListNew,GbListNew).
-
-removeRows([R|T],GbListOld,GbListNew) :-
-    delete(GbListOld,[R,_],GbListOld1),
-    removeRows(T,GbListOld1,GbListNew).
 
 first_items([], []).
 first_items([[H|_]|T], [H|T2]) :-
@@ -470,28 +466,28 @@ rotation(j, j2, j3).
 rotation(j, j3, j4).
 rotation(j, j4, j1).
 
-%%%%%%%%%%%%%%%%%%%%%%%%
-%GameBoard Manipulation%
-%%%%%%%%%%%%%%%%%%%%%%%%
 %Discover all the possible cell where a tetramino can be placed for all its rotations
 findPossibleGoals(T,List,GbList) :- 
     findall((T1), rotation(T, T1, _), Lr),
-    findPossibleGoals0([],Lr,List,GbList).
+    findPossibleGoals([],Lr,List,GbList).
 
-findPossibleGoals0(Found,[],Found,_).
+findPossibleGoals(Found,[],Found,_).
 
-findPossibleGoals0(Found,[Ht|T],L,GbList) :-
-    bagof((Ht,R,C), tetraminoGoal(Ht,R,C,GbList), List),
+findPossibleGoals(Found,[Ht|T],L,GbList) :-
+    findall((Ht,R,C), tetraminoGoal(Ht,R,C,GbList), List),
     append(Found,List,NewList),
-    findPossibleGoals0(NewList,T,L,GbList).
+    findPossibleGoals(NewList,T,L,GbList).
 
 %a tetramino can be placed on a free cell when the next row collide
-tetraminoGoal(T,R,C,GbList) :-
+tetraminoGoal(Tr,R,C,GbList) :-
     freeCell1(R,C,GbList),
-    fitPiece(T,R,C,_,_,_,_,_,_,GbList),
+    fitPiece(Tr,R,C,_,_,_,_,_,_,GbList),
     R1 is R + 1,
-    \+fitPiece(T,R1,C,_,_,_,_,_,_,GbList).
+    \+fitPiece(Tr,R1,C,_,_,_,_,_,_,GbList).
 
+%%%%%%%%%%%%%%%%%%%%%%%%
+%GameBoard Manipulation%
+%%%%%%%%%%%%%%%%%%%%%%%%
 %Put the piece in the given reference point and then assert all the occupied cells.
 placePiece(T,R1,C1,LGbpre,LGbpost,NumberOfClearedRows) :-
     fitPiece(T,R1,C1,R2,C2,R3,C3,R4,C4,LGbpre),
@@ -499,6 +495,13 @@ placePiece(T,R1,C1,LGbpre,LGbpost,NumberOfClearedRows) :-
     append(LGbpre,L,LGbpre1),
     computeNewGameBoard(LGbpre1,LGbpost,NumberOfClearedRows).
 %   
+
+%remove all the rows in the list indexed by rownumber
+removeRows([],GbListNew,GbListNew).
+
+removeRows([R|T],GbListOld,GbListNew) :-
+    delete(GbListOld,[R,_],GbListOld1),
+    removeRows(T,GbListOld1,GbListNew).
 
 %Compute the new gameboard after the tetramino placing
 %If one or more rows are full perform removing and row shifting.
@@ -510,7 +513,7 @@ placePiece(T,R1,C1) :-
     asserta(startGbL(GbListNew)).
 
 computeNewGameBoard(GbListOld,GbListNew,NumberOfClearedRows) :-
-    setof((R),clearedRow(R,GbListOld),ClearedRows),
+    findall((R),clearedRow(R,GbListOld),ClearedRows),
     removeRows(ClearedRows,GbListOld,GbListMid),
     length(ClearedRows,NumberOfClearedRows),
     shift(ClearedRows,GbListMid,GbListNew),
@@ -520,7 +523,7 @@ computeNewGameBoard(GbListOld,GbListOld,0).
 
 %row shifter for computing new gameBoard
 shift([H|T],GbListOld,GbListNew):-
-    bagof(([R,C]), cellToShift(R, C, H, GbListOld), ElementToShift),
+    findall(([R,C]), cellToShift(R, C, H, GbListOld), ElementToShift),
     shiftOccCell(1, ElementToShift, ShiftedElements),
     first_items(ElementToShift,RowsToShift),
     sort(RowsToShift,SortedRowsToShift), 
@@ -541,8 +544,10 @@ shiftOccCell(N, [[R,C]|T], [[R1,C]|T2]) :-
     shiftOccCell(N, T, T2).
 
 %Return the row number of the cleared row
+%here setof is used
 countOccCelInRow(R,N, GbList) :- 
-    setof((C),occCellLG(R,C,GbList),Occ),length(Occ,N).
+    bagof(([C]),occCellLG(R,C,GbList),Occ),
+    length(Occ,N).
 
 clearedRow(R, GbList) :-
     countOccCelInRow(R,Occ, GbList),
@@ -562,7 +567,7 @@ assertList([[R,C]|T]) :-
 %%%%%%%%%%%%%%%%%%%%%
 %count the occupied cell for a certain column
 countOccCelInColumn(C,N,GbList) :- 
-    setof((R),occCellLG(R,C,GbList),Occ),length(Occ,N).
+    findall((R),occCellLG(R,C,GbList),Occ),length(Occ,N).
 
 topOccCelInColumn(GbList,RT) :- 
     gameBoardW(W),
@@ -754,7 +759,6 @@ callMinMax(GbL, Player, BestNode) :-
 %Planner%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Define actions
-%setof(A, action(A), Action)
 
 action(rotate).
 action(right).
@@ -821,7 +825,7 @@ diff(_,_,Diff) :-
 checkGoal(Node,Node).
 
 serchPath(Start, Goal, Plan, PlanStory) :-
-    setof(A, action(A), Actions),
+    findall(A, action(A), Actions),
     Heuristic=evaluateMovement, 
     GoalChecker=checkGoal,
     planner(Start, Goal, Actions, Heuristic, Plan, PlanStory, GoalChecker).

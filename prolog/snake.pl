@@ -147,7 +147,7 @@ checkGoal([H|_],[F|_]) :-
     H == F.
 	
 serchPath(Start, Goal, Plan, PlanStory) :-
-    setof(A, action(A), Actions),
+    findall(A, action(A), Actions),
     Heuristic=evaluateMovement, 
     GoalChecker = checkGoal,
     planner(Start, Goal, Actions, Heuristic, Plan, PlanStory, GoalChecker).
@@ -174,3 +174,5 @@ gameLoop :-
     write('\33\[2J'),writeGameBoard,nl,
     executePlan(Start,Goal,Plan),
     gameLoop.
+
+start :- gameLoop.
