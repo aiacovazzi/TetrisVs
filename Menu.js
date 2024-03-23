@@ -2,12 +2,12 @@ let tetrisLogo = new Image(260, 90);
 tetrisLogo.src = "images\\tetrisVS.png";
 let tetrisBuilding = new Image(280, 280);
 tetrisBuilding.src = "images\\building.png";
-let aiExpEnabled = '◀ AI explanation enabled ▶';
-let aiExpDisabled = '◀ AI explanation disabled ▶';
+let aiExpEnabled = '◀ AI explanation: enabled ▶';
+let aiExpDisabled = '◀ AI explanation: disabled ▶';
 let aiLevelEasy = '◀ AI opponent level: easy ▶';
 let aiLevelHard = '◀ AI opponent level: hard ▶';
 let numberOfTurns = 1;
-let vsModeNumberOfTurns = '◀ Vs Mode: number of turns '+numberOfTurns.toString() +' ▶';
+let vsModeNumberOfTurns = '◀ Vs Mode number of turns: '+numberOfTurns.toString() +' ▶';
 let aiExp = aiExpDisabled;
 let aiLevel = aiLevelEasy;
 let optionAiExp = 'Disabled';
@@ -56,7 +56,7 @@ let keydown = event => {
         if(numberOfTurns == 6){
             numberOfTurns = 1;
         }
-        gameMode[2] = '◀ Vs Mode: number of turns '+numberOfTurns.toString() +' ▶';
+        gameMode[2] = '◀ Vs Mode number of turns: '+numberOfTurns.toString() +' ▶';
     }
 
     
@@ -65,7 +65,7 @@ let keydown = event => {
         if(numberOfTurns == 0){
             numberOfTurns = 5;
         }
-        gameMode[2] = '◀ Vs Mode: number of turns '+numberOfTurns.toString() +' ▶';
+        gameMode[2] = '◀ Vs Mode number of turns: '+numberOfTurns.toString() +' ▶';
     }
 
     if (event.code == "Enter" || event.code == "Space") {
