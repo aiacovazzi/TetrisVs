@@ -71,11 +71,14 @@ export default class GameBoard {
     aiPlayer = null;
 
     #explainMode = true;
+    easyMode = true;
     minMaxExplanation = null;
     explanationText = null;
     pauseExplain = null;
 
     emergency = false;
+
+    
 
     //all the keyCode here: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/keyCode
     #keydownP1 = event => {
@@ -123,6 +126,7 @@ export default class GameBoard {
         this.playerTwo = option[2];
         this.#aiMapper = new MapperAI();
         option[3] == 'Enabled' ? this.#explainMode = true: this.#explainMode = false;
+        option[4] == 'Easy' ? this.easyMode = true: this.easyMode = false;
 
         //assign the proper event listener for human player
         if (this.playerOne == 'Player') {
@@ -143,7 +147,7 @@ export default class GameBoard {
         }
 
         if (this.#aiEnabled && !this.gameOver) {
-            this.#aiMapper.reset();
+            this.#aiMapper.reset(this);
         }
 
         document.addEventListener("keydown", this.#keydownPause);
@@ -158,7 +162,7 @@ export default class GameBoard {
             this.p2NextTetrominoIndex = this.#p2NextTetromino.color;
         }
 
-        this.#setSong();        
+        //this.#setSong();        
         this.#setIntervalMovement(this.#intervalMs);
         this.#levelInterval = setInterval(function () { if (!mov.pause) { mov.#nextSec() } }, 1000);
     }
@@ -204,7 +208,6 @@ export default class GameBoard {
                         this.playersNumber == 1 || this.emergency? this.aiPlayer = 'maxmax' : this.aiPlayer = 'max';
                         //remove last tetromino if emergecy mode in vs mode
                         this.aiPlayer == 'maxmax' && this.playersNumber == 2? this.currentAndNextTetramino.pop() : null; 
-                        console.log(this.aiPlayer +' '+this.currentAndNextTetramino);
                         this.#aiMapper.getSolution(this);
                         if(this.#explainMode){
                             this.#explain();
@@ -352,7 +355,7 @@ export default class GameBoard {
         if (this.#pressPause) {
             this.pause = !(this.pause);
             this.pauseExplain = false;
-            this.pause ? this.#theme.volume = 0.1 : this.#theme.volume = 1.0;
+            //this.pause ? this.#theme.volume = 0.1 : this.#theme.volume = 1.0;
         }
         this.#pressPause = false;
     }
@@ -520,7 +523,6 @@ export default class GameBoard {
             }else{
                 player = 'P2';
                 adversary = 'P1';}
-            console.log(this.minMaxExplanation.length);
             if(this.minMaxExplanation.length > 1){
                 this.explanationText = this.explanationText + 'The next move for '+player+' is ['+this.minMaxExplanation[0][0].toUpperCase()+' '+this.minMaxExplanation[0][1]+' '+this.minMaxExplanation[0][2]+'], this because it allows, in two step, to reach ['+this.minMaxExplanation[2][0].toUpperCase()+' '+this.minMaxExplanation[2][1]+' '+this.minMaxExplanation[2][2]+'] that is the move that maximize '+player+' advantage considering that '+adversary+' has ['+this.minMaxExplanation[1][0].toUpperCase()+' '+this.minMaxExplanation[1][1]+' '+this.minMaxExplanation[1][2]+'] as best countermove (this is true unless a better move will be available the next step).\n\r'
                 this.explanationText = this.explanationText + 'To understand why ['+this.minMaxExplanation[2][0].toUpperCase()+' '+this.minMaxExplanation[2][1]+' '+this.minMaxExplanation[2][2]+'] is the best move to reach, read the heuristic evaluation of that move by clicking the following hyperlink: http://localhost:7777/explainHeuristic.\n\r';    

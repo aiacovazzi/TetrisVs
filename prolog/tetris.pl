@@ -1,26 +1,22 @@
-:- module(tetris, [startGbL/1,getPathOfBestMove/2,writeGameBoard/0,placePiece/3,start/1,tetraminos/1,nextNodes/4,evaluateNode/3,takeMove/2,evaluateMovement/2,checkGoal/2,rotate/2,left/2,right/2,down/2,explanation/3]).
+:- module(tetris, [startGbL/1,getPathOfBestMove/2,writeGameBoard/0,placePiece/3,start/1,tetraminos/1,nextNodes/4,evaluateNode/3,takeMove/2,evaluateMovement/2,checkGoal/2,rotate/2,left/2,right/2,down/2,explanation/3,easyMode/0]).
 /*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 >To Do
-    -DOCUMENTAZIONE Tetris VS
-    Titolo:
-    Tetris Vs - A Case Study on Game Playing Agents in Prolog
-		-Introduzione (piccola storia di tetris, perché tetris, anticipazione sul resto del paper)
-		-descrizione del gioco e le sue modalità, riferimento al set di regole utilizzate
 
-        Prolog implementation of the Agent:
-        perché prolog?
-		-rappresentazione kb
-        -implementazione operazioni base
-		-euristica di valutazione mosse
-		-generazione strategia
-			-1p
-			-2p
-		-implementazione del min max
-            -come viene utilizzato dal tetris 1p e 2p
-		-implementazione del best first planner
-            -come viene utilizzato dal tetris
-		-implementazione del ws per comunicare col FE
-		-implementazione explainability
+    -hard mode (selezionabile) e documentarla
+    -DOCUMENTAZIONE Tetris VS
+        -Prolog implementation of the Agent:
+            -implementazione operazioni base
+            -euristica di valutazione mosse
+            --------------------------------------------
+            -generazione strategia
+                -1p
+                -2p
+            -implementazione del min max
+                -come viene utilizzato dal tetris 1p e 2p
+            -implementazione del best first planner
+                -come viene utilizzato dal tetris
+            -implementazione del ws per comunicare col FE
+            -implementazione explainability
 
 		-criticità e sviluppi futuri
             -no real time
@@ -31,7 +27,6 @@
         -conclusioni
 		-appendice a tris
 		-appendice b snake
-        -bibliografia
 */
 :- use_module(library(lists)).
 :- use_module(planner).
@@ -50,9 +45,9 @@ tetraminoSpawnX(5).
 tetraminoSpawnY(1).
 
 :-dynamic(tetraminos/1).
-:-dynamic(savedBranch/3).
 :-dynamic(startGbL/1).
 :-dynamic(explanation/3).
+:-dynamic(easyMode/0).
 
 start(T):-
     tetraminos(TList),
@@ -125,37 +120,6 @@ first_items([[H|_]|T], [H|T2]) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Tetraminos' operators and checks%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%Convert a generic tetramino in its starting shape
-firstShape(o,o1).
-firstShape(i, i1).
-firstShape(s, s1).
-firstShape(z, z1).
-firstShape(l, l1).
-firstShape(j, j1).
-firstShape(t, t1).
-
-%Mapping each tetramino with its rotations.
-%Can be used also to obtain the next rotation of a given tetramino.
-rotation(o,o1,o1).
-rotation(i, i1, i2).
-rotation(i, i2, i1).
-rotation(z, z1, z2).
-rotation(z, z2, z1).
-rotation(s, s1, s2).
-rotation(s, s2, s1).
-rotation(t, t1, t2).
-rotation(t, t2, t3).
-rotation(t, t3, t4).
-rotation(t, t4, t1).
-rotation(l, l1, l2).
-rotation(l, l2, l3).
-rotation(l, l3, l4).
-rotation(l, l4, l1).
-rotation(j, j1, j2).
-rotation(j, j2, j3).
-rotation(j, j3, j4).
-rotation(j, j4, j1).
-
 %Check if a cell is occupied in the list
 occCellL(R,C,GbList) :-
     memberchk([R,C],GbList).
@@ -477,6 +441,37 @@ fitPiece(l4,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
     eq(C4,C2,-1),
     fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
 
+%Convert a generic tetramino in its starting shape
+firstShape(o,o1).
+firstShape(i, i1).
+firstShape(s, s1).
+firstShape(z, z1).
+firstShape(l, l1).
+firstShape(j, j1).
+firstShape(t, t1).
+
+%Mapping each tetramino with its rotations.
+%Can be used also to obtain the next rotation of a given tetramino.
+rotation(o,o1,o1).
+rotation(i, i1, i2).
+rotation(i, i2, i1).
+rotation(z, z1, z2).
+rotation(z, z2, z1).
+rotation(s, s1, s2).
+rotation(s, s2, s1).
+rotation(t, t1, t2).
+rotation(t, t2, t3).
+rotation(t, t3, t4).
+rotation(t, t4, t1).
+rotation(l, l1, l2).
+rotation(l, l2, l3).
+rotation(l, l3, l4).
+rotation(l, l4, l1).
+rotation(j, j1, j2).
+rotation(j, j2, j3).
+rotation(j, j3, j4).
+rotation(j, j4, j1).
+
 %%%%%%%%%%%%%%%%%%%%%%%%
 %GameBoard Manipulation%
 %%%%%%%%%%%%%%%%%%%%%%%%
@@ -709,10 +704,21 @@ nextNodes1(_,Tetraminos,GbL,T, _, NextNodes) :-
     findPossibleGoals(T,L,GbL),
     callPlacePiece(Tetraminos,GbL,L,NextNodes).
 
+%easy mode: every row-clearing move stops the branch exploration
 nextNodes(Player,_,Node,[]) :-
+    easyMode,
     Player \= 'maxmax',
     nth1(3, Node, ClRow),
     ClRow > 0.
+
+%hard mode: only the opponents row-clearing move stops the branch exploration, 
+%the AI player will continue the branch exploration until the end.
+nextNodes(Player,_,Node,[]) :-
+    \+easyMode,
+    Player = 'max',
+    nth1(3, Node, ClRow),
+    ClRow > 0.
+
 
 nextNodes(Player,Level,Node,NextNodes) :-
     nth1(1, Node, Tetraminos),

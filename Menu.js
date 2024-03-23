@@ -4,10 +4,14 @@ let tetrisBuilding = new Image(280, 280);
 tetrisBuilding.src = "images\\building.png";
 let aiExpEnabled = '◀ AI explanation enabled ▶';
 let aiExpDisabled = '◀ AI explanation disabled ▶';
-let aiExp = aiExpEnabled;
-let optionAiExp = 'Enabled';
+let aiLevelEasy = '◀ AI opponent level: easy ▶';
+let aiLevelHard = '◀ AI opponent level: hard ▶';
+let aiExp = aiExpDisabled;
+let aiLevel = aiLevelEasy;
+let optionAiExp = 'Disabled';
+let optionAilevel = 'Easy';
 
-let gameMode = [aiExp,'Solo', 'Solo AI', 'Vs Player', 'Vs AI', 'AI vs AI'];
+let gameMode = [aiExp,aiLevel,'Solo', 'Solo AI', 'Vs Player', 'Vs AI', 'AI vs AI'];
 let options = null;
 let index = 0;
 let keydown = event => {
@@ -34,17 +38,27 @@ let keydown = event => {
         }
     }
 
+    if ((event.code == "ArrowRight" || event.code == "ArrowLeft" || event.code == "KeyA" || event.code == "KeyD") && index == 1)  {
+        if(gameMode[1] == aiLevelEasy){
+        gameMode[1] = aiLevelHard;
+        optionAilevel = 'Hard';
+        }else{
+            gameMode[1] = aiLevelEasy;
+            optionAilevel = 'Easy';
+        }
+    }
+
     if (event.code == "Enter" || event.code == "Space") {
-        if(index == 1){
-            options = [1,'Player','None',optionAiExp];
-        }else if(index == 2){
-            options = [1,'AI','None',optionAiExp];
+        if(index == 2){
+            options = [1,'Player','None',optionAiExp,optionAilevel];
         }else if(index == 3){
-            options = [2,'Player','Player',optionAiExp];
+            options = [1,'AI','None',optionAiExp,optionAilevel];
         }else if(index == 4){
-            options = [2,'Player','AI',optionAiExp];
+            options = [2,'Player','Player',optionAiExp,optionAilevel];
         }else if(index == 5){
-            options = [2,'AI','AI',optionAiExp];
+            options = [2,'Player','AI',optionAiExp,optionAilevel];
+        }else if(index == 6){
+            options = [2,'AI','AI',optionAiExp,optionAilevel];
         }
     }
 

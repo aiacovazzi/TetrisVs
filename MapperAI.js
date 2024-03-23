@@ -47,10 +47,16 @@ export default class MapperAI {
 
     assertBoard(gB) {
         this.#assertPlacedTetramino(gB);
-        this.#assertStartingTetraminos(gB);
+        //this.#assertStartingTetraminos(gB);
     }
 
-    reset(){
+    reset(gB){
         this.#callApi('retcell', 'GET', null);
+        this.#callApi('resetstart', 'GET', null);
+        if(gB.easyMode){
+            this.#callApi('easyMode', 'GET', null);
+        }else{
+            this.#callApi('hardMode', 'GET', null);
+        }
     }
 }

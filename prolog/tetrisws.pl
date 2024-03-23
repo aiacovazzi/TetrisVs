@@ -44,6 +44,20 @@ resetStart(_Request) :-
     assertz(tetraminos([])),
     reply_json_dict('ok').
 
+%easyMode (assert easyMode)
+:- http_handler(root(easyMode), easyMode, []).
+easyMode(_Request) :-
+    cors_enable,
+    assertz(easyMode),
+    reply_json_dict('ok').
+
+%hardMode (retract easyMode)
+:- http_handler(root(hardMode), hardMode, []).
+hardMode(_Request) :-
+    cors_enable,
+    retractall(easyMode),
+    reply_json_dict('ok').
+
 %start/T (assert the starting tetraminos)
 :- http_handler(root(start/T), reqStart(T), []).
 reqStart(T,_Request) :-
