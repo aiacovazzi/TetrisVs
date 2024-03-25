@@ -2,31 +2,29 @@
 /*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 >To Do
     -DOCUMENTAZIONE Tetris VS
-        //add citation np hard and tetris ai history
-        -Game GUI?
+        //add citation np hard, tetris ai history, reinforcement learning
 
-        -Prolog implementation of the Agent:
-            -implementazione operazioni base
-            -euristica di valutazione mosse
-            --------------------------------------------
-            -implementazione del best first planner
-                -come viene utilizzato dal tetris
             -implementazione del min max
                 -come viene utilizzato dal tetris 1p e 2p
             -generazione strategia
                 -1p
                 -2p
-            -implementazione del ws per comunicare col FE
             -implementazione explainability
-
+            -implementazione del ws per comunicare col FE
+            
 		-criticità e sviluppi futuri
             -no real time
             -lentezza 2p
                 -possibile soluzione: montecarlo tree search
-            -non accuratezza euristica 2p
-                -possibile soluzione: algoritmo genetico per individuare pesi
+                -modulo esterno valutazione euristica
+            -non accuratezza euristica
+                -conteggio buchi chiusi
+                -algoritmo genetico per individuare pesi
+                
         -conclusioni
+
 		-appendice a tris
+        
 		-appendice b snake
 */
 :- use_module(library(lists)).
@@ -629,7 +627,7 @@ sumEntropyOfGameBoard(SumEnt,GbL) :-
     findall((Ent),entropyOfRow(_,Ent,GbL),EntropyXRow),
     sum_list(EntropyXRow,SumEnt).
 
-gameBoardScore1(GbList,AggregateHeight,RowCleared,Holes,Bumpiness,SumEnt,Score) :-
+gameBoardScore(GbList,AggregateHeight,RowsCleared,Holes,Bumpiness,SumEnt,Score) :-
     occCellForColumn(GbList,O4C),
     heightForColumn(GbList,H4C),
     %AggregateHeight
@@ -641,21 +639,97 @@ gameBoardScore1(GbList,AggregateHeight,RowCleared,Holes,Bumpiness,SumEnt,Score) 
     %Score
     E is -10,
     sumEntropyOfGameBoard(SumEnt,GbList),
-    Score is E*SumEnt - AggregateHeight - Holes - Bumpiness + RowCleared.
+    Score is E*SumEnt - AggregateHeight - Holes - Bumpiness + RowsCleared.
 
-gameBoardScore('max',GbList,AggregateHeight,RowCleared,Holes,Bumpiness,SumEnt,Score) :-
-    RowCleared > 0,
-    gameBoardScore1(GbList,AggregateHeight,RowCleared,Holes,Bumpiness,SumEnt,Score1),
-    Score is -1*1000*RowCleared+Score1.
+gameBoardScore('max',GbList,AggregateHeight,RowsCleared,Holes,Bumpiness,SumEnt,Score) :-
+    RowsCleared > 0,
+    gameBoardScore(GbList,AggregateHeight,RowsCleared,Holes,Bumpiness,SumEnt,Score1),
+    Score is -1*1000*RowsCleared+Score1.
 
-gameBoardScore('min',GbList,AggregateHeight,RowCleared,Holes,Bumpiness,SumEnt,Score) :-
-    RowCleared > 0,
-    gameBoardScore1(GbList,AggregateHeight,RowCleared,Holes,Bumpiness,SumEnt,Score1),
-    Score is 1000*RowCleared+Score1.
+gameBoardScore('min',GbList,AggregateHeight,RowsCleared,Holes,Bumpiness,SumEnt,Score) :-
+    RowsCleared > 0,
+    gameBoardScore(GbList,AggregateHeight,RowsCleared,Holes,Bumpiness,SumEnt,Score1),
+    Score is 1000*RowsCleared+Score1.
 
-gameBoardScore(_,GbList,AggregateHeight,RowCleared,Holes,Bumpiness,SumEnt,Score) :-
-    gameBoardScore1(GbList,AggregateHeight,RowCleared,Holes,Bumpiness,SumEnt,Score).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    
+gameBoardScore(_,GbList,AggregateHeight,RowsCleared,Holes,Bumpiness,SumEnt,Score) :-
+    gameBoardScore(GbList,AggregateHeight,RowsCleared,Holes,Bumpiness,SumEnt,Score).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%
+%Planner%
+%%%%%%%%%
+%Define actions
+
+action(rotate).
+action(right).
+action(left).
+action(down).
+
+%listing the actual transformation involved by the moves
+rotate((T1,R1,C1,GbL),(T2,R1,C1,GbL)) :-
+    rotation(_,T2,T1),
+    fitPiece(T2,R1,C1,_,_,_,_,_,_,GbL).
+
+left((T1,R1,C1,GbL),(T1,R1,C2,GbL)) :- 
+    C2 is C1+1,
+    fitPiece(T1,R1,C2,_,_,_,_,_,_,GbL).
+
+right((T1,R1,C1,GbL),(T1,R1,C2,GbL)) :- 
+    C2 is C1-1,
+    fitPiece(T1,R1,C2,_,_,_,_,_,_,GbL).
+    
+down((T1,R1,C1,GbL),(T1,R2,C1,GbL)) :- 
+    R2 is R1 - 1,
+    fitPiece(T1,R2,C1,_,_,_,_,_,_,GbL).
+%
+
+%evaluateMovement compute a score for each move given the goal, the score is weighted by the priority of the move.
+%the priority is: rotate, [left, right], down.
+%the ratio is: 
+%   align it to the point she wants to reach
+%   rotate a tetromino in the proper rotation
+%   then push down the tetromino in that point
+%this sequence of operation is the most common, so priority are shaped around this scenario, however it can deal also with more complex situations.
+
+evaluateMovement([rotate, (T1,_,_,_), (T2,_,_,_)], Score) :-
+    diff(T1,T2,Diff),
+	priority(rotate,Priority),
+	Score is  Diff * Priority.
+
+evaluateMovement([left, (_,_,C1,_), (_,_,C2,_)], Score) :-
+	priority(left,Priority),
+	Score is (C2 - C1) * Priority.
+	
+evaluateMovement([right, (_,_,C1,_), (_,_,C2,_)], Score) :-
+	priority(right,Priority),
+	Score is (C2 - C1) * Priority * -1.
+
+evaluateMovement([down, (_,R1,_,_), (_,R2,_,_)], Score) :-
+	priority(down,Priority),
+	Score is (R2 - R1) * Priority * -1.
+
+priority(left,10).
+priority(right,10).
+priority(down,1).
+priority(rotate,1).
+
+diff(T1,T2,Diff) :-
+    T1 == T2,
+    Diff is 0,
+    !.
+
+diff(_,_,Diff) :-
+    Diff is 1,
+    !.
+
+checkGoal(Node,Node).
+
+serchPath(Start, Goal, Plan, PlanStory) :-
+    findall(A, action(A), Actions),
+    Heuristic=evaluateMovement, 
+    GoalChecker=checkGoal,
+    planner(Start, Goal, Actions, Heuristic, Plan, PlanStory, GoalChecker).
+%%%%%%%%%
 
 %%%%%%%%%%%%%%%
 %MaxMax/MinMax%                                                                                                                                                                                                                                                                                                                                                   Max/MaxMax move selection%
@@ -681,12 +755,12 @@ callPlacePiece(Tetrominoes,GbList,[(T,R,C)|Taill],[[Tetrominoes,GbListPost,ClRow
 callPlacePiece(Tetrominoes,GbList,[_|Taill],Tail2):-
     callPlacePiece(Tetrominoes,GbList,Taill,Tail2).
 
-%Node: [Eval,Tetrominoes,GbL,RowCleared, Move]
+%Node: [Eval,Tetrominoes,GbL,RowsCleared, Move]
 %Tetrominoes: a list of tetrominoes
 %Gb: a list of the occCell for a certain gameboard configuration
 %Move: the move [t,r,c] that allow to obatain the current node, added only when nextNodes is called
 %Eval: the evaluation of the node, added only when the heuristc is called, nextNodes will not see this one
-%RowCleared: store the number of row cleared by the move in order to pass it to the evaluation function
+%RowsCleared: store the number of row cleared by the move in order to pass it to the evaluation function
 
 %do not generate any other move if checking a row-clear move in vs mode.
 %it's like "win" from the AI perspective.
@@ -743,82 +817,6 @@ callMinMax(GbL, Player, BestNode) :-
     minmax(StartingNode, NextNodesGenerator, Heuristic, MoveTaker, 0, Depth, -inf, +inf, BestNode, Player).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%%%%%%%%%
-%Planner%
-%%%%%%%%%
-%Define actions
-
-action(rotate).
-action(right).
-action(left).
-action(down).
-
-%listing the actual transformation involved by the moves
-rotate((T1,R1,C1,GbL),(T2,R1,C1,GbL)) :-
-    rotation(_,T2,T1),
-    fitPiece(T2,R1,C1,_,_,_,_,_,_,GbL).
-
-left((T1,R1,C1,GbL),(T1,R1,C2,GbL)) :- 
-    C2 is C1+1,
-    fitPiece(T1,R1,C2,_,_,_,_,_,_,GbL).
-
-right((T1,R1,C1,GbL),(T1,R1,C2,GbL)) :- 
-    C2 is C1-1,
-    fitPiece(T1,R1,C2,_,_,_,_,_,_,GbL).
-    
-down((T1,R1,C1,GbL),(T1,R2,C1,GbL)) :- 
-    R2 is R1 - 1,
-    fitPiece(T1,R2,C1,_,_,_,_,_,_,GbL).
-%
-
-%evaluateMovement compute a score for each move given the goal, the score is weighted by the priority of the move.
-%the priority is: rotate, [left, right], down.
-%the ratio is: 
-%   a player first rotate a tetromino in the proper rotation
-%   then align it to the point she wants to reach
-%   then push down the tetromino in that point
-%this sequence of operation is the most common, so priority are shaped around this scenario, however it can deal also with more complex situations.
-
-evaluateMovement([rotate, (T1,_,_,_), (T2,_,_,_)], Score) :-
-    diff(T1,T2,Diff),
-	priority(rotate,Priority),
-	Score is  Diff * Priority.
-
-evaluateMovement([left, (_,_,C1,_), (_,_,C2,_)], Score) :-
-	priority(left,Priority),
-	Score is (C2 - C1) * Priority.
-	
-evaluateMovement([right, (_,_,C1,_), (_,_,C2,_)], Score) :-
-	priority(right,Priority),
-	Score is (C2 - C1) * Priority * -1.
-
-evaluateMovement([down, (_,R1,_,_), (_,R2,_,_)], Score) :-
-	priority(down,Priority),
-	Score is (R2 - R1) * Priority * -1.
-
-priority(left,10).
-priority(right,10).
-priority(down,1).
-priority(rotate,1). %rotate has the minimum priority, it's executed as last move. 
-
-diff(T1,T2,Diff) :-
-    T1 == T2,
-    Diff is 0,
-    !.
-
-diff(_,_,Diff) :-
-    Diff is 1,
-    !.
-
-checkGoal(Node,Node).
-
-serchPath(Start, Goal, Plan, PlanStory) :-
-    findall(A, action(A), Actions),
-    Heuristic=evaluateMovement, 
-    GoalChecker=checkGoal,
-    planner(Start, Goal, Actions, Heuristic, Plan, PlanStory, GoalChecker).
-%%%%%%%%%
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Main predicate: GetPathOfBestMove%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -826,7 +824,6 @@ serchPath(Start, Goal, Plan, PlanStory) :-
 %getPathOfBestMove search for the best move and then call the planner for the tetris path problem.
 %start and goal are inverted because I want to find the path starting from the goal and coming back to the start.
 %This allow to deal easily with particular cases like slide or t-spin.
-%If a certain move is actually impossibile to reach (eg: trapped tetromino) the next move is considered.
 
 getPathOfBestMove(Player,Plan) :-
     getStartGbL(GbL),
@@ -845,7 +842,7 @@ getPathOfBestMove(Player,Plan) :-
     assertExplanation(BestNode,Tg,Rg,Cg,PathStory),
     !.
 
-%we need two version of  assertGbL and assertExplanation because it is possible that the node story doe not exist.
+%we need two version of  assertGbL and assertExplanation because it is possible that the node story does not exist.
 %this happens if the min max find a win move just after one step.
 assertGbL(BestNode) :-
     tetrominoes(T),

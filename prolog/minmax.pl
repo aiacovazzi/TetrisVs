@@ -8,6 +8,10 @@ operator(max,'@>=').
 operator(min,'@=<').
 operator(maxmax,'@>=').
 
+%minmax, max depth reached
+minmax(CurrentNode, _, Heuristic, _, Depth, Depth, _, _, CurrentNodeEvaluated, Player) :-
+    evaluate(Player,Heuristic,CurrentNode,CurrentNodeEvaluated),!.
+
 %minmax recursive case
 minmax(CurrentNode, NextNodesGenerator, Heuristic, MoveTaker, Level, Depth, Alpha, Beta, CurrentNodeEvaluated,  Player) :-
     %nl,write('Current Node: '),write(CurrentNode),
@@ -15,17 +19,12 @@ minmax(CurrentNode, NextNodesGenerator, Heuristic, MoveTaker, Level, Depth, Alph
     %nl,write('Player: '),write(Player),
     call(NextNodesGenerator,Player,Level,CurrentNode,NextNodes),
     %nl,write('NextNodes: '),write(NextNodes),
-    minmax1(NextNodes,CurrentNode, NextNodesGenerator, Heuristic, MoveTaker, Level, Depth, Alpha, Beta, CurrentNodeEvaluated,  Player),
-    !.
-
-%minmax, max depth reached
-minmax(CurrentNode, _, Heuristic, _, Depth, Depth, _, _, CurrentNodeEvaluated, Player) :-
-    evaluate(Player,Heuristic,CurrentNode,CurrentNodeEvaluated).
+    minmax1(NextNodes,CurrentNode, NextNodesGenerator, Heuristic, MoveTaker, Level, Depth, Alpha, Beta, CurrentNodeEvaluated,  Player).
 
 %no successor for the current node
 minmax1([],CurrentNode, _, Heuristic, _, _, _, _, _, CurrentNodeEvaluated, Player) :-
     %nl,write('Evaluate: '),write(CurrentNode),
-    evaluate(Player,Heuristic,CurrentNode,CurrentNodeEvaluated).
+    evaluate(Player,Heuristic,CurrentNode,CurrentNodeEvaluated),!.
     %nl,write('EvaluatedNode: '),write(CurrentNodeEvaluated).
 
 %there are successors for the current node
