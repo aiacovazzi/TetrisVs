@@ -1,4 +1,4 @@
-# Tetris Vs
+# TetrisVs
 
 ## Requirements:
 - [Swi Prolog](https://www.swi-prolog.org/)
