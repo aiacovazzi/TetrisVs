@@ -9,15 +9,15 @@
 ### Prolog server:
 - Run `tetrisws.pl` with Swi Prolog, this will start the backend server (it will start on the port 7777, be sure it's available).
 
-### HTML/JS server  (using Live Server):
-- Load the `VSTETRIS` folder in VSCode.
-- Run `tetris.html` with VSCode using "Open with Live Server".
-  
-### HTML/JS server  (alternative way using Simple Web Server):
+### HTML/JS server  (using Simple Web Server):
 - Load the `VSTETRIS` folder in Simple Web Server.
 - Choose a port number (e.g. 8089).
 - Run the game using the following hyperlink: [http://127.0.0.1:8089/tetris.html](http://127.0.0.1:8089/tetris.html)
 
+### HTML/JS server  (alternative way using Live Server):
+- Load the `VSTETRIS` folder in VSCode.
+- Run `tetris.html` with VSCode using "Open with Live Server".
+  
 ## How to play:
 
 ### Player 1:
