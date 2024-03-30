@@ -5,6 +5,8 @@
 - A local web server (for example [Simple Web Server](https://simplewebserver.org/)), or alternatively, you can use VSCode with the Live Server extension installed ([How to enable Live Server on Visual Studio Code](https://www.geeksforgeeks.org/how-to-enable-live-server-on-visual-studio-code/)).
 
 ## Installation:
+### Checkout this project:
+- Checkout this project into a folder called `VSTETRIS`.
 
 ### Prolog server:
 - Run `tetrisws.pl` with Swi Prolog, this will start the backend server (it will start on the port 7777, be sure it's available).
