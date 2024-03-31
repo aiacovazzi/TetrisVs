@@ -151,21 +151,16 @@ nextNodes([G,P,_], [Ly|L], [[Gp,P2,[Ly,P]]|NextNodes]) :-
 nextNodes(_, [], []).
 
 %%Heuristic
-evaluateNode(_,[G,P,M],[S,G,P,M]) :-
-    turn(X),
-    winningGB(X,G),
-    S is 1,
-    !.
-
-evaluateNode(_,[G,P,M],[S,G,P,M]) :-
-    turn(X),
-    next(X,X2),
-    winningGB(X2,G),
-    S is -1,
+evaluateNode(Player,[G,P,M],[S,G,P,M]) :-
+    winningGB(_,G),
+    evaluateNodeValue(Player,S),
     !.
 
 evaluateNode(_,[G,P,M],[S,G,P,M]) :-
     S is 0.
+
+evaluateNodeValue(min,1).
+evaluateNodeValue(max,-1).
 
 %allows to remember the move chain
 %base case: when we collect the value from a leaf

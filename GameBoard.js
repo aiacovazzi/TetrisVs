@@ -182,6 +182,7 @@ export default class GameBoard {
                     this.#setEmergencyMode();
                     if(this.#aiEnabled && !this.gameOver && !this.#isAiTurn()){
                         this.#aiMapper.assertBoard(this);
+                        console.log('called');
                     }
                     //switch turn when in VS mode, avoid it elsewhere
                     if (this.playersNumber == 2) {

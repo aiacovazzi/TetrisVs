@@ -1,4 +1,24 @@
 :- module(minmax, [minmax/10]).
+%generic MinMax MaxMax algorithm
+%How to use it:
+%+CurrentNode must be the start game state.
+
+%+NextNodesGenerator must be a predicate capable of generating a lis of new game state given the current one.
+
+%+Heuristic must be a predicate capable of returning an utility score associated to a terminal state.
+%   An higher score imply a good move for the 'max' player.
+
+%+MoveTaker must be a predicate capable taking information from a state in order to construct the node story related to the selected move.
+
+%+Level is the start level, usually set to 0.
+
+%+Depth is the maximum depth reachable my the algorithm before performing the static ealuation of the node.
+
+%+Alpha and +Beta are the parameter used to prune the tree when a part of it doesn't nedd to be evaluated since a player at higher level has alredy a better option available.
+
+%+Player is the starting player, when it is 'max' allows to usie the standard minmax algorithm, when it is 'maxmax' allows the algorithm to work as a lookahed algorithm
+
+%-CurrentNodeEvaluated is the current node evaluated, it will contain also the move that lead to the best move detected st the end of the node.
 
 nextplayer(max,min).
 nextplayer(min,max).

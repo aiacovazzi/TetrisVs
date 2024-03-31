@@ -1,32 +1,5 @@
 :- module(tetris, [startGbL/1,getPathOfBestMove/2,writeGameBoard/0,placePiece/3,start/1,tetrominoes/1,nextNodes/4,evaluateNode/3,takeMove/2,evaluateMovement/2,checkGoal/2,rotate/2,left/2,right/2,down/2,explanation/3,easyMode/0]).
-/*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
->To Do
-    -DOCUMENTAZIONE Tetris VS
-        //add citation np hard, tetris ai history, reinforcement learning
-
-            -implementazione del min max
-                -come viene utilizzato dal tetris 1p e 2p
-            -generazione strategia
-                -1p
-                -2p
-            -implementazione explainability
-            -implementazione del ws per comunicare col FE
-            
-		-criticità e sviluppi futuri
-            -no real time
-            -lentezza 2p
-                -possibile soluzione: montecarlo tree search
-                -modulo esterno valutazione euristica
-            -non accuratezza euristica
-                -conteggio buchi chiusi
-                -algoritmo genetico per individuare pesi
-                
-        -conclusioni
-
-		-appendice a tris
-        
-		-appendice b snake
-*/
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- use_module(library(lists)).
 :- use_module(planner).
 :- use_module(minmax).
@@ -51,7 +24,6 @@ start(T):-
     append(TList,[T],TList2),
     retract(tetrominoes(TList)),
     assert(tetrominoes(TList2)).
-%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%
 %Auxiliary rules%
@@ -103,7 +75,6 @@ getStartGbL([]).
 first_items([], []).
 first_items([[H|_]|T], [H|T2]) :-
     first_items(T, T2).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Tetrominoes' operators and checks%
@@ -138,7 +109,6 @@ fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
     freeCell(R2,C2,GbList),
     freeCell(R3,C3,GbList),
     freeCell(R4,C4,GbList).
-%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%
 %Tetrominoes Definition%
@@ -159,7 +129,7 @@ fitPiece(o1,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
     eq(C3,C1,-1),
     eq(R2,R1,-1),
     fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %I Tetromino
 %[ ][x][ ][ ]
@@ -189,7 +159,7 @@ fitPiece(i2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
 	eq(R3,R1,+1),
 	eq(R4,R1,+2),
     fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %S Tetromino
 %   [ ][ ]
@@ -220,7 +190,7 @@ fitPiece(s2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
     eq(R4,R3,-1),
     eq(C3,C1,-1),
     fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %Z Tetromino
 %S Tetromino
@@ -251,7 +221,7 @@ fitPiece(z2,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
     eq(R4,R1,-1),
     eq(C3,C1,-1),
     fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %T Tetromino
 %   [ ]
@@ -311,7 +281,7 @@ fitPiece(t4,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
     eq(C3,C1,-1),
     eq(R4,R1,-1),
     fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %J Tetromino
 %[ ]
@@ -370,7 +340,7 @@ fitPiece(j4,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
     eq(R3,R1,+1),
     eq(C4,C3,-1),
     fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %L Tetromino
 %      [ ]
@@ -429,7 +399,7 @@ fitPiece(l4,R1,C1,R2,C2,R3,C3,R4,C4,GbList) :-
     eq(R3,R1,+1),
     eq(C4,C2,-1),
     fitPiece(R1,C1,R2,C2,R3,C3,R4,C4,GbList).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %Convert a generic tetromino in its starting shape
 firstShape(o,o1).
@@ -480,7 +450,6 @@ tetrominoGoal(Tr,R,C,GbList) :-
     fitPiece(Tr,R,C,_,_,_,_,_,_,GbList),
     R1 is R + 1,
     \+fitPiece(Tr,R1,C,_,_,_,_,_,_,GbList).
-%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%
 %GameBoard Manipulation%
@@ -549,7 +518,6 @@ clearedRow(R, GbList) :-
     countOccCelInRow(R,Occ, GbList),
     gameBoardW(W),
     Occ = W.
-%%%%%%%%%%%%%%%%%%%%%  
 
 %%%%%%%%%%%%%%%%%%%%%
 %GameBoard Evaluator%
@@ -643,23 +611,23 @@ gameBoardScore(GbList,AggregateHeight,RowsCleared,Holes,Bumpiness,SumEnt,Score) 
 
 gameBoardScore('max',GbList,AggregateHeight,RowsCleared,Holes,Bumpiness,SumEnt,Score) :-
     RowsCleared > 0,
-    gameBoardScore(GbList,AggregateHeight,RowsCleared,Holes,Bumpiness,SumEnt,Score1),
-    Score is -1*1000*RowsCleared+Score1.
+    gameBoardScore(GbList,AggregateHeight,0,Holes,Bumpiness,SumEnt,Score1),
+    Score is -1*1000*RowsCleared+Score1,
+    !.
 
 gameBoardScore('min',GbList,AggregateHeight,RowsCleared,Holes,Bumpiness,SumEnt,Score) :-
     RowsCleared > 0,
-    gameBoardScore(GbList,AggregateHeight,RowsCleared,Holes,Bumpiness,SumEnt,Score1),
-    Score is 1000*RowsCleared+Score1.
+    gameBoardScore(GbList,AggregateHeight,0,Holes,Bumpiness,SumEnt,Score1),
+    Score is 1000*RowsCleared+Score1,
+    !.
 
 gameBoardScore(_,GbList,AggregateHeight,RowsCleared,Holes,Bumpiness,SumEnt,Score) :-
     gameBoardScore(GbList,AggregateHeight,RowsCleared,Holes,Bumpiness,SumEnt,Score).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%
 %Planner%
 %%%%%%%%%
 %Define actions
-
 action(rotate).
 action(right).
 action(left).
@@ -729,7 +697,6 @@ serchPath(Start, Goal, Plan, PlanStory) :-
     Heuristic=evaluateMovement, 
     GoalChecker=checkGoal,
     planner(Start, Goal, Actions, Heuristic, Plan, PlanStory, GoalChecker).
-%%%%%%%%%
 
 %%%%%%%%%%%%%%%
 %MaxMax/MinMax%                                                                                                                                                                                                                                                                                                                                                   Max/MaxMax move selection%
@@ -755,12 +722,12 @@ callPlacePiece(Tetrominoes,GbList,[(T,R,C)|Taill],[[Tetrominoes,GbListPost,ClRow
 callPlacePiece(Tetrominoes,GbList,[_|Taill],Tail2):-
     callPlacePiece(Tetrominoes,GbList,Taill,Tail2).
 
-%Node: [Eval,Tetrominoes,GbL,RowsCleared, Move]
+%Node: [Eval,Tetrominoes,GbL,(AggHeight,ClRow,Holes,Bump,Ent), Move]
 %Tetrominoes: a list of tetrominoes
 %Gb: a list of the occCell for a certain gameboard configuration
 %Move: the move [t,r,c] that allow to obatain the current node, added only when nextNodes is called
 %Eval: the evaluation of the node, added only when the heuristc is called, nextNodes will not see this one
-%RowsCleared: store the number of row cleared by the move in order to pass it to the evaluation function
+%(AggHeight,ClRow,Holes,Bump,Ent): the compunded term containing the information from which the score derived
 
 %do not generate any other move if checking a row-clear move in vs mode.
 %it's like "win" from the AI perspective.
@@ -815,7 +782,6 @@ callMinMax(GbL, Player, BestNode) :-
     Heuristic = evaluateNode,
     MoveTaker = takeMove,
     minmax(StartingNode, NextNodesGenerator, Heuristic, MoveTaker, 0, Depth, -inf, +inf, BestNode, Player).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Main predicate: GetPathOfBestMove%
@@ -878,7 +844,6 @@ assertExplanation(BestNode,Tg,Rg,Cg,PathStory) :-
     retractall(explanation),
     asserta(explanation([(Tg,Rg,Cg)],PathStory,ScoreComponent)),
     !.
-%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%
 %Debugging Helper Rules%
@@ -950,4 +915,61 @@ writeColNumbers(C) :-
     C1 is C + 1, 
     writeColNumbers(C1),
     !.
-%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%
+%Simulation Runner%
+%%%%%%%%%%%%%%%%%%%
+%allows to run a solo mode simulation to estimate the maximum number of cleared row
+trmns([o,i,j,l,t,s,z]).
+
+takeClearedRows(BestNode,ClearedRows) :-
+    length(BestNode,6),
+    nth1(5,BestNode,ClearedRows).
+
+ takeClearedRows(BestNode,ClearedRows) :-
+    length(BestNode,5),
+    nth1(4,BestNode,HeuristicInfo),
+    nth1(2,HeuristicInfo,ClearedRows).
+
+getPathOfBestMove2(Player,ClearedRows) :-
+    getStartGbL(GbL),
+    tetrominoes([T|_]),
+    firstShape(T,T1),
+    tetrominoSpawnX(X),
+    tetrominoSpawnY(Y),!,
+    placePiece(T1,Y,X,GbL,_,_),  %avoid to start the whole algorithm if the piece cannot be placed, gameover condition if failed
+    callMinMax(GbL,Player,BestNode),
+    takeClearedRows(BestNode,ClearedRows),
+    write(BestNode),nl,
+    assertGbL(BestNode),
+    !.
+
+runSimulation(ClearedRows) :-
+    retractall(startGbL(_)),
+    asserta(startGbL([])),
+    retractall(tetrominoes(_)),
+    assertz(tetrominoes([])),
+    random(0, 7, N),
+    trmns(L),
+    nth0(N, L, T),
+    start(T),
+    runSimulation1(0,ClearedRows),
+    write(ClearedRows). 
+
+runSimulation1(ClearedRows,TotClearedRows) :-
+    write(ClearedRows),nl,
+    random(0, 7, N),
+    trmns(L),
+    nth0(N, L, T2),
+    start(T2),
+    %writeGameBoard,
+    getPathOfBestMove2('maxmax',TempClearedRows),
+    %write('ok'),nl,
+    tetrominoes([_,T2]),
+    retractall(tetrominoes(_)),
+    assertz(tetrominoes([T2])),
+    %get_char(_X),
+    ClearedRows1 is TempClearedRows + ClearedRows,
+    runSimulation1(ClearedRows1, TotClearedRows).
+
+runSimulation1(ClearedRows,ClearedRows).
