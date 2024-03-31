@@ -1,6 +1,7 @@
 :- use_module(planner).
 :-dynamic(snake/1).
 :-dynamic(food/1).
+%run the predicate "start" to launch the game.
 %gameboard dimensions
 gameBoardW(9).
 gameBoardH(9).
