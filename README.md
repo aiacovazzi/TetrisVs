@@ -9,7 +9,7 @@
 - Checkout this project into a folder called `VSTETRIS`.
 
 ### Prolog server:
-- Run `tetrisws.pl` with Swi Prolog, this will start the backend server (it will start on the port 7777, be sure it's available).
+- Run `prolog/tetrisws.pl` with Swi Prolog, this will start the backend server (it will start on the port 7777, be sure it's available).
 
 ### HTML/JS server  (using Simple Web Server):
 - Load the `VSTETRIS` folder in Simple Web Server.
