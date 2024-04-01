@@ -18,7 +18,7 @@
 
 %+Player is the starting player, when it is 'max' allows to usie the standard minmax algorithm, when it is 'maxmax' allows the algorithm to work as a lookahed algorithm
 
-%-CurrentNodeEvaluated is the current node evaluated, it will contain also the move that lead to the best move detected st the end of the node.
+%-CurrentNodeEvaluated is the best successor node evaluated, it will contain also the move that lead to the best move detected at the end of the node.
 
 nextplayer(max,min).
 nextplayer(min,max).

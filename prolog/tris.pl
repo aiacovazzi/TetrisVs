@@ -5,7 +5,7 @@
 :-dynamic(storyEnabled/0).
 %run the predicate "playerVsPlayer" to play versus another human player.
 %run the predicate "playerVsAi" to play versus the ai.
-%run the predicate "AiVsAi" to see an Ai vs Ai game.
+%run the predicate "aiVsAi" to see an Ai vs Ai game.
 gameBoardW(3).
 gameBoardH(3).
 %storyEnabled.
